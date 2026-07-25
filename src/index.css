@@ -55,6 +55,49 @@ button:focus-visible, input:focus-visible, a:focus-visible {
   outline: 3px solid #4D7CFE; outline-offset: 2px;
 }
 
+/* --- room layout: desktop two-column, mobile stacked --- */
+.room-grid {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 14px;
+  align-items: start;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+.room-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (max-width: 760px) {
+  .room-grid {
+    grid-template-columns: 1fr;
+  }
+  .room-rail {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .rail-standings {
+    grid-column: 1 / -1;
+  }
+}
+
+.feed-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 4px;
+}
+@media (min-width: 761px) {
+  .feed-scroll {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+}
+
+/* --- animations --- */
 @keyframes rise { from { opacity:0; transform: translateY(14px) scale(.96); } to { opacity:1; transform:none; } }
 @keyframes pop { 0%{transform:scale(.3)} 70%{transform:scale(1.25)} 100%{transform:scale(1)} }
 @keyframes stamp { 0%{transform:scale(.4) rotate(-8deg);opacity:0} 70%{transform:scale(1.12) rotate(2deg)} 100%{transform:none;opacity:1} }

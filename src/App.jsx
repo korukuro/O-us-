@@ -249,9 +249,9 @@ function Room({ roomId, onBack }) {
         <UserButton />
       </header>
 
-      <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 14, alignItems: "start" }}>
+      <div className="room-grid">
         {/* RAIL */}
-        <aside style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <aside className="room-rail">
           {myMember && myLevel && (
             <div className="card" style={{ padding: 14, display: "flex", gap: 12, alignItems: "center", background: "#CFE4FF" }}>
               <ORing size={80} pct={myLevel.pct} tint={myLevel.tint} awake={(plan?.done || 0) > 0} />
@@ -265,7 +265,7 @@ function Room({ roomId, onBack }) {
             </div>
           )}
 
-          <div className="card" style={{ padding: 13 }}>
+          <div className="card rail-standings" style={{ padding: 13 }}>
             <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 16, marginBottom: 8 }}>Standings</div>
             {board.map((m, i) => {
               const lv = levelFor(m.xp);
@@ -331,7 +331,7 @@ function Room({ roomId, onBack }) {
 
           {tab === "feed" ? (
             <>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12, maxHeight: "70vh", overflowY: "auto", paddingRight: 4 }}>
+              <div className="feed-scroll">
                 {feed === undefined && <p>Loading…</p>}
                 {feed?.map((e) => {
                   if (e.kind === "solve") return (
