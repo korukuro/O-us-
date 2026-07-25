@@ -1,21 +1,55 @@
 import {
-  SignInButton,
-  UserButton,
-  SignedIn,
-  SignedOut,
+  SignInButton, UserButton, SignedIn, SignedOut,
 } from "@clerk/clerk-react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useStoreUser } from "./hooks/useStoreUser";
 import { parseProblemUrl } from "./lib/parseProblemUrl";
-import { useState } from "react";
+import ORing from "./components/ORing";
+import Confetti from "./components/Confetti";
+import { useState, useEffect, useRef } from "react";
+
+function cleanError(e) {
+  const raw = e?.message || String(e);
+  // Convex wraps thrown errors; pull out just the human message
+  const m = raw.match(/Uncaught Error:\s*(.+?)(?:\s+at handler|$)/);
+  return m ? m[1].trim() : raw;
+}
+
+const DIFF_COLOR = { easy: "#7BE495", medium: "#FFC93C", hard: "#FF6B9D" };
+const LEVELS = [
+  { at: 0, big: "O(1)", tint: "#9BE7C4" },
+  { at: 60, big: "O(log n)", tint: "#7FD1FF" },
+  { at: 150, big: "O(n)", tint: "#FFC93C" },
+  { at: 300, big: "O(n log n)", tint: "#FF9F4D" },
+  { at: 550, big: "O(n²)", tint: "#FF6B9D" },
+  { at: 900, big: "O(2ⁿ)", tint: "#B77BFF" },
+];
+function levelFor(xp) {
+  let i = 0;
+  for (let k = 0; k < LEVELS.length; k++) if (xp >= LEVELS[k].at) i = k;
+  const cur = LEVELS[i], next = LEVELS[i + 1];
+  const pct = next ? (xp - cur.at) / (next.at - cur.at) : 1;
+  return { ...cur, next, pct: Math.max(0.05, Math.min(1, pct)) };
+}
+const REACTIONS = ["🔥", "🧠", "😭", "💀"];
 
 export default function App() {
   return (
-    <div style={{ padding: 40, fontFamily: "system-ui", maxWidth: 640 }}>
-      <h1>O(us)</h1>
+    <div style={{ minHeight: "100vh", padding: 14 }}>
       <SignedOut>
-        <SignInButton mode="modal" />
+        <div style={{ maxWidth: 420, margin: "80px auto", textAlign: "center" }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+            <ORing size={90} pct={0.72} tint="#FFC93C" />
+          </div>
+          <h1 style={{ fontFamily: "'Baloo 2'", fontSize: 44, margin: "0 0 4px" }}>
+            O<span style={{ opacity: 0.8 }}>(us)</span>
+          </h1>
+          <p style={{ opacity: 0.6, marginBottom: 24 }}>grind the sheet together</p>
+          <SignInButton mode="modal">
+            <button className="btn">Sign in to start</button>
+          </SignInButton>
+        </div>
       </SignedOut>
       <SignedIn>
         <Main />
@@ -27,10 +61,7 @@ export default function App() {
 function Main() {
   useStoreUser();
   const [activeRoom, setActiveRoom] = useState(null);
-
-  if (activeRoom) {
-    return <Room roomId={activeRoom} onBack={() => setActiveRoom(null)} />;
-  }
+  if (activeRoom) return <Room roomId={activeRoom} onBack={() => setActiveRoom(null)} />;
   return <RoomList onOpen={setActiveRoom} />;
 }
 
@@ -43,38 +74,55 @@ function RoomList({ onOpen }) {
   const [msg, setMsg] = useState("");
 
   return (
-    <div>
-      <UserButton />
-      <h2>Your rooms</h2>
-      {rooms === undefined && <p>Loading…</p>}
-      {rooms?.length === 0 && <p>No rooms yet.</p>}
-      <ul>
-        {rooms?.map((r) => (
-          <li key={r._id}>
-            <button onClick={() => onOpen(r._id)}>
-              {r.name} — code {r.code}
+    <div style={{ maxWidth: 560, margin: "0 auto" }}>
+      <header style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+        <ORing size={44} pct={0.72} tint="#FFC93C" />
+        <h1 style={{ fontFamily: "'Baloo 2'", fontSize: 34, margin: 0, flex: 1 }}>
+          O<span style={{ opacity: 0.8 }}>(us)</span>
+        </h1>
+        <UserButton />
+      </header>
+
+      <div className="card" style={{ padding: 16, marginBottom: 14 }}>
+        <h2 style={{ fontFamily: "'Baloo 2'", marginTop: 0 }}>Your rooms</h2>
+        {rooms === undefined && <p>Loading…</p>}
+        {rooms?.length === 0 && <p style={{ opacity: 0.6 }}>No rooms yet. Create or join one below.</p>}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {rooms?.map((r) => (
+            <button key={r._id} className="btn ghost" style={{ textAlign: "left" }}
+              onClick={() => onOpen(r._id)}>
+              <b>{r.name}</b> · code {r.code} · {r.myXp} XP
             </button>
-          </li>
-        ))}
-      </ul>
+          ))}
+        </div>
+      </div>
 
-      <h3>Create</h3>
-      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Room name" />
-      <button onClick={async () => {
-        if (!name.trim()) return;
-        const { code } = await createRoom({ name: name.trim() });
-        setMsg(`Created! Code: ${code}`);
-        setName("");
-      }}>Create</button>
+      <div className="card" style={{ padding: 16, marginBottom: 14 }}>
+        <h3 style={{ fontFamily: "'Baloo 2'", marginTop: 0 }}>Create a room</h3>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Room name" />
+          <button className="btn" onClick={async () => {
+            if (!name.trim()) return;
+            try {
+              const { code } = await createRoom({ name: name.trim() });
+              setMsg(`Created! Code: ${code}`); setName("");
+            } catch (e) { setMsg(cleanError(e)); }
+          }}>Create</button>
+        </div>
+      </div>
 
-      <h3>Join</h3>
-      <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="6-char code" />
-      <button onClick={async () => {
-        try { await joinRoom({ code }); setMsg("Joined!"); setCode(""); }
-        catch (e) { setMsg(e.message); }
-      }}>Join</button>
+      <div className="card" style={{ padding: 16 }}>
+        <h3 style={{ fontFamily: "'Baloo 2'", marginTop: 0 }}>Join a room</h3>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input className="input" value={code} onChange={(e) => setCode(e.target.value)} placeholder="6-char code" />
+          <button className="btn" onClick={async () => {
+            try { await joinRoom({ code }); setMsg("Joined!"); setCode(""); }
+            catch (e) { setMsg(cleanError(e)); }
+          }}>Join</button>
+        </div>
+      </div>
 
-      {msg && <p>{msg}</p>}
+      {msg && <p style={{ marginTop: 12, fontWeight: 700 }}>{msg}</p>}
     </div>
   );
 }
@@ -82,7 +130,6 @@ function RoomList({ onOpen }) {
 function Room({ roomId, onBack }) {
   const me = useQuery(api.users.current);
   const myUserId = me?._id;
-
   const problems = useQuery(api.problems.list, { roomId });
   const feed = useQuery(api.feed.list, { roomId });
   const members = useQuery(api.rooms.members, { roomId });
@@ -98,39 +145,49 @@ function Room({ roomId, onBack }) {
   const throwDare = useMutation(api.dares.throwDare);
   const acceptDare = useMutation(api.dares.accept);
 
+  const [tab, setTab] = useState("feed");
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
   const [difficulty, setDifficulty] = useState("medium");
   const [topics, setTopics] = useState("");
   const [draft, setDraft] = useState("");
-  const [msg, setMsg] = useState("");
-
+  const [confetti, setConfetti] = useState(0);
+  const [toast, setToast] = useState(null);
+  const bottom = useRef(null);
   const parsed = parseProblemUrl(url);
+
+  const flash = (m) => { setToast(m); setTimeout(() => setToast(null), 3000); };
+  useEffect(() => { if (tab === "feed") bottom.current?.scrollIntoView({ behavior: "smooth" }); }, [feed?.length, tab]);
+
+  const board = [...(members || [])].sort((a, b) => b.xp - a.xp);
+  const myMember = members?.find((m) => m.userId === myUserId);
+  const myLevel = myMember ? levelFor(myMember.xp) : null;
 
   const handleAdd = async () => {
     const finalTitle = title.trim() || parsed?.title;
-    if (!finalTitle) { setMsg("Need a title or a valid URL"); return; }
+    if (!finalTitle) { flash("Need a title or a valid URL"); return; }
     try {
       await addProblem({
         roomId, title: finalTitle, slug: parsed?.slug || "",
         url: url.trim() || undefined, platform: parsed?.platform || "custom",
         difficulty, topics: topics.split(",").map((t) => t.trim()).filter(Boolean),
       });
-      setUrl(""); setTitle(""); setTopics(""); setMsg("Added ✓");
-    } catch (e) { setMsg(e.message); }
+      setUrl(""); setTitle(""); setTopics(""); flash("Added ✓");
+    } catch (e) { flash(cleanError(e)); }
   };
 
   const handleSolve = async (problemId) => {
     const takeaway = prompt("One-line takeaway (optional):") ?? undefined;
     try {
       const { gained } = await logSolve({ roomId, problemId, takeaway });
-      setMsg(`Solved! +${gained} XP`);
-    } catch (e) { setMsg(e.message); }
+      setConfetti((c) => c + 1);
+      flash(`Solved! +${gained} XP`);
+    } catch (e) { flash(cleanError(e)); }
   };
 
   const handleDare = async (problemId, problemTitle) => {
     const others = (members || []).filter((m) => m.userId !== myUserId);
-    if (others.length === 0) { setMsg("Nobody else in the room to dare"); return; }
+    if (others.length === 0) { flash("Nobody else to dare"); return; }
     let target = others[0];
     if (others.length > 1) {
       const names = others.map((o, i) => `${i}: ${o.name}`).join("\n");
@@ -141,168 +198,232 @@ function Room({ roomId, onBack }) {
     }
     try {
       await throwDare({ roomId, targetId: target.userId, problemId });
-      setMsg(`Dared ${target.name} to do ${problemTitle}`);
-    } catch (e) { setMsg(e.message); }
+      flash(`Dared ${target.name}`);
+    } catch (e) { flash(cleanError(e)); }
   };
 
-  return (
-    <div>
-      <button onClick={onBack}>← rooms</button>
+  const reactionBar = (e) => (
+    <div style={{ display: "flex", gap: 5, marginTop: 9 }}>
+      {REACTIONS.map((emoji) => {
+        const found = e.reactions?.find((r) => r.emoji === emoji);
+        const count = found?.count || 0;
+        const mine = e.mineReacted?.includes(emoji);
+        return (
+          <button key={emoji} onClick={() => toggleReaction({ eventId: e._id, emoji })}
+            style={{
+              fontSize: 14, background: mine ? "#FFE58A" : "#FFFCF2",
+              border: "2.5px solid #171325", borderRadius: 10, padding: "1px 7px", cursor: "pointer",
+            }}>
+            {emoji}{count > 0 ? ` ${count}` : ""}
+          </button>
+        );
+      })}
+    </div>
+  );
 
-      <div style={{ display: "flex", gap: 40, alignItems: "flex-start" }}>
-        {/* LEFT: plan + problem bank */}
-        <div style={{ flex: 1 }}>
-          <h2>Today's plan</h2>
+  return (
+    <div style={{ maxWidth: 1120, margin: "0 auto" }}>
+      {confetti > 0 && <Confetti key={confetti} seed={confetti} />}
+
+      <header style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
+        <button className="btn ghost tiny" onClick={onBack}>← rooms</button>
+        <ORing size={42} pct={0.72} tint="#FFC93C" />
+        <h1 style={{ fontFamily: "'Baloo 2'", fontSize: 30, margin: 0, flex: 1 }}>
+          O<span style={{ opacity: 0.8 }}>(us)</span>
+        </h1>
+        <UserButton />
+      </header>
+
+      <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 14, alignItems: "start" }}>
+        {/* RAIL */}
+        <aside style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {myMember && myLevel && (
+            <div className="card" style={{ padding: 14, display: "flex", gap: 12, alignItems: "center", background: "#CFE4FF" }}>
+              <ORing size={80} pct={myLevel.pct} tint={myLevel.tint} awake={(plan?.done || 0) > 0} />
+              <div>
+                <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 20 }}>You</div>
+                <div style={{ fontSize: 13, opacity: 0.75 }}>{myLevel.big}</div>
+                <div style={{ fontSize: 11, opacity: 0.6, marginTop: 3 }}>
+                  {myMember.xp} XP · 🔥 {myMember.streak}d
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="card" style={{ padding: 13 }}>
+            <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 16, marginBottom: 8 }}>Standings</div>
+            {board.map((m, i) => {
+              const lv = levelFor(m.xp);
+              return (
+                <div key={m.userId} style={{
+                  display: "flex", alignItems: "center", gap: 9, padding: "7px 0",
+                  borderTop: i === 0 ? "none" : "2px dashed rgba(23,19,37,.13)",
+                }}>
+                  <span style={{ fontFamily: "'Baloo 2'", fontWeight: 800, opacity: 0.5, width: 14 }}>{i + 1}</span>
+                  <ORing size={34} pct={lv.pct} tint={lv.tint} thin />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>{m.name}</div>
+                    <div style={{ fontSize: 10.5, opacity: 0.55 }}>{lv.big} · 🔥{m.streak}</div>
+                  </div>
+                  <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 15 }}>{m.xp}</div>
+                </div>
+              );
+            })}
+          </div>
+
           {plan && (
-            <div style={{ background: "#ffd", padding: 10, marginBottom: 12 }}>
+            <div className="card" style={{ padding: 13, background: "#FFF0B8" }}>
+              <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 16 }}>Today's plan</div>
               {plan.locked ? (
                 <>
-                  <b>{plan.done}/{plan.target} done</b> (locked)
-                  <div style={{ fontSize: 12 }}>Add more any time; can't remove.</div>
+                  <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 28, marginTop: 4 }}>
+                    {plan.done}<span style={{ fontSize: 16, opacity: 0.45 }}>/{plan.target}</span>
+                  </div>
+                  <div style={{ fontSize: 11.5, opacity: 0.7 }}>Locked. Add more any time; can't remove.</div>
                 </>
               ) : (
                 <>
-                  <b>{plan.problemIds.length} picked</b> — not locked
-                  <button
-                    disabled={plan.problemIds.length === 0}
+                  <div style={{ fontSize: 13, margin: "4px 0 8px" }}>{plan.problemIds.length} picked</div>
+                  <button className="btn tiny" disabled={plan.problemIds.length === 0}
                     onClick={() => lockPlan({ roomId })}
-                    style={{ marginLeft: 8 }}>
-                    Lock the day
-                  </button>
+                    style={{ background: "#7BE495" }}>Lock the day</button>
                 </>
               )}
             </div>
           )}
 
           {sync && (
-            <div style={{ background: "#def", padding: 8, marginBottom: 12 }}>
-              <b>In sync: {sync.syncedCount}/{sync.target}</b>
-              {sync.bonusActive && " — bonus active 🎉"}
-              <div style={{ fontSize: 12 }}>Problems 2+ of you have both solved.</div>
+            <div className="card" style={{ padding: 13, background: "#DDF3FF" }}>
+              <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 16 }}>In sync</div>
+              <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 26 }}>
+                {sync.syncedCount}<span style={{ fontSize: 15, opacity: 0.45 }}>/{sync.target}</span>
+              </div>
+              <div style={{ fontSize: 11.5, opacity: 0.7 }}>
+                {sync.bonusActive ? "Bonus active 🎉" : "Both solved the same problem."}
+              </div>
             </div>
           )}
+        </aside>
 
-          <h2>Problem bank</h2>
-          {problems === undefined && <p>Loading…</p>}
-          <ul>
-            {problems?.map((p) => (
-              <li key={p._id}>
-                {p.url ? <a href={p.url} target="_blank" rel="noreferrer">{p.title}</a> : p.title}
-                {" — "}{p.difficulty} — added by {p.addedByName}{" "}
-                <button onClick={() => handleSolve(p._id)}>Log solve</button>
-                {plan && !plan.problemIds.includes(p._id) && (
-                  <button onClick={() => setPlanProblems({
-                    roomId,
-                    problemIds: [...(plan.problemIds || []), p._id],
-                  })}>+ plan</button>
-                )}
-                {plan && plan.problemIds.includes(p._id) && !plan.locked && (
-                  <button onClick={() => setPlanProblems({
-                    roomId,
-                    problemIds: plan.problemIds.filter((id) => id !== p._id),
-                  })}>− unplan</button>
-                )}
-                {plan?.problemIds.includes(p._id) && <span> [in plan]</span>}
-                {members && members.length > 1 && (
-                  <button onClick={() => handleDare(p._id, p.title)}>dare</button>
-                )}
-              </li>
-            ))}
-          </ul>
-
-          <h3>Add a problem</h3>
-          <input value={url} style={{ width: "100%" }}
-            onChange={(e) => {
-              setUrl(e.target.value);
-              const q = parseProblemUrl(e.target.value);
-              if (q && !title.trim()) setTitle(q.title);
-            }}
-            placeholder="Paste LeetCode / GfG link" />
-          {parsed && <small>read as: {parsed.title} on {parsed.platform}</small>}
-          <br />
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
-          <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
-            <option value="easy">Easy</option>
-            <option value="medium">Medium</option>
-            <option value="hard">Hard</option>
-          </select>
-          <input value={topics} onChange={(e) => setTopics(e.target.value)} placeholder="topics" />
-          <button onClick={handleAdd}>Add</button>
-        </div>
-
-        {/* RIGHT: feed */}
-        <div style={{ flex: 1 }}>
-          <h2>Feed</h2>
-          {feed === undefined && <p>Loading…</p>}
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {feed?.map((e) => {
-              const reactionBar = (
-                <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
-                  {["🔥", "🧠", "😭", "💀"].map((emoji) => {
-                    const found = e.reactions?.find((r) => r.emoji === emoji);
-                    const count = found?.count || 0;
-                    const mine = e.mineReacted?.includes(emoji);
-                    return (
-                      <button key={emoji}
-                        onClick={() => toggleReaction({ eventId: e._id, emoji })}
-                        style={{ fontWeight: mine ? "bold" : "normal" }}>
-                        {emoji}{count > 0 ? ` ${count}` : ""}
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-
-              if (e.kind === "solve") return (
-                <div key={e._id} style={{ background: "#eef", padding: 8 }}>
-                  <b>{e.authorName}</b> solved <b>{e.problemTitle}</b> ({e.difficulty})
-                  {e.locked
-                    ? e.hasTakeaway && <div style={{ opacity: 0.5 }}>🔒 solve it to read the takeaway</div>
-                    : e.takeaway && <div>“{e.takeaway}”</div>}
-                  {reactionBar}
-                </div>
-              );
-              if (e.kind === "text") return (
-                <div key={e._id} style={{ padding: 8 }}>
-                  <b>{e.authorName}:</b> {e.body}
-                  {reactionBar}
-                </div>
-              );
-              if (e.kind === "dare") return (
-                <div key={e._id} style={{ background: "#fde", padding: 8 }}>
-                  <b>{e.authorName}</b> dared <b>{e.targetName}</b>: {e.problemTitle}
-                  {e.done ? (
-                    <span> — cleared ✓</span>
-                  ) : e.targetId === myUserId ? (
-                    <button onClick={() => acceptDare({ eventId: e._id })}
-                      style={{ marginLeft: 8 }}>Take it on</button>
-                  ) : (
-                    <span> — pending…</span>
-                  )}
-                  {reactionBar}
-                </div>
-              );
-              if (e.kind === "system") return (
-                <div key={e._id} style={{ textAlign: "center", color: "#777" }}>{e.body}</div>
-              );
-              return null;
-            })}
+        {/* MAIN */}
+        <main style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className={`btn ${tab === "feed" ? "" : "ghost"} tiny`} onClick={() => setTab("feed")}>Feed</button>
+            <button className={`btn ${tab === "bank" ? "" : "ghost"} tiny`} onClick={() => setTab("bank")}>
+              Problems {problems ? `(${problems.length})` : ""}
+            </button>
           </div>
 
-          <div style={{ marginTop: 12 }}>
-            <input value={draft} onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && draft.trim()) {
-                  sendMessage({ roomId, body: draft });
-                  setDraft("");
-                }
-              }}
-              placeholder="message…" />
-          </div>
-        </div>
+          {tab === "feed" ? (
+            <>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, maxHeight: "70vh", overflowY: "auto", paddingRight: 4 }}>
+                {feed === undefined && <p>Loading…</p>}
+                {feed?.map((e) => {
+                  if (e.kind === "solve") return (
+                    <div key={e._id} className="card" style={{ padding: 12, background: "#F2F8FF", animation: "rise .34s cubic-bezier(.34,1.56,.64,1)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <b>{e.authorName}</b>
+                        <span style={{ background: DIFF_COLOR[e.difficulty], border: "2.5px solid #171325", borderRadius: 9, padding: "1px 9px", fontSize: 12, fontWeight: 700 }}>{e.difficulty}</span>
+                      </div>
+                      <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 18, marginTop: 6 }}>
+                        {e.problemUrl ? <a href={e.problemUrl} target="_blank" rel="noreferrer">{e.problemTitle}</a> : e.problemTitle}
+                      </div>
+                      {e.locked
+                        ? e.hasTakeaway && <div style={{ opacity: 0.5, fontSize: 12, marginTop: 4 }}>🔒 solve it to read the takeaway</div>
+                        : e.takeaway && <div style={{ fontSize: 13, opacity: 0.7, marginTop: 4 }}>“{e.takeaway}”</div>}
+                      {reactionBar(e)}
+                    </div>
+                  );
+                  if (e.kind === "text") return (
+                    <div key={e._id} className="card" style={{ padding: "10px 13px" }}>
+                      <div style={{ fontSize: 12, opacity: 0.6 }}>{e.authorName}</div>
+                      <div style={{ fontSize: 14 }}>{e.body}</div>
+                      {reactionBar(e)}
+                    </div>
+                  );
+                  if (e.kind === "dare") return (
+                    <div key={e._id} className="card" style={{ padding: 12, background: "#FFE9F2" }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", opacity: 0.6 }}>
+                        {e.authorName} → {e.targetName}
+                      </div>
+                      <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 18, marginTop: 2 }}>{e.problemTitle}</div>
+                      {e.done ? <div style={{ color: "#2E9E63", fontWeight: 700, marginTop: 6 }}>cleared ✓</div>
+                        : e.targetId === myUserId ? <button className="btn tiny" style={{ marginTop: 8 }} onClick={() => acceptDare({ eventId: e._id })}>Take it on</button>
+                        : <div style={{ opacity: 0.6, fontWeight: 700, marginTop: 6 }}>pending…</div>}
+                    </div>
+                  );
+                  if (e.kind === "system") return (
+                    <div key={e._id} style={{ display: "flex", justifyContent: "center" }}>
+                      <span style={{ background: "#B77BFF", border: "3px solid #171325", borderRadius: 14, boxShadow: "4px 4px 0 #171325", padding: "7px 16px", fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 14, animation: "stamp .4s cubic-bezier(.34,1.56,.64,1)" }}>{e.body}</span>
+                    </div>
+                  );
+                  return null;
+                })}
+                <div ref={bottom} />
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input className="input" value={draft} onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && draft.trim()) { sendMessage({ roomId, body: draft }); setDraft(""); } }}
+                  placeholder="say something…" />
+                <button className="btn" onClick={() => { if (draft.trim()) { sendMessage({ roomId, body: draft }); setDraft(""); } }}>Send</button>
+              </div>
+            </>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div className="card" style={{ padding: 14 }}>
+                <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 18, marginBottom: 8 }}>Add a problem</div>
+                <input className="input" style={{ marginBottom: 6 }} value={url}
+                  onChange={(e) => { setUrl(e.target.value); const q = parseProblemUrl(e.target.value); if (q && !title.trim()) setTitle(q.title); }}
+                  placeholder="Paste LeetCode / GfG link" />
+                {parsed && <small style={{ opacity: 0.7 }}>read as: {parsed.title} on {parsed.platform}</small>}
+                <input className="input" style={{ margin: "6px 0" }} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
+                <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
+                  {["easy", "medium", "hard"].map((d) => (
+                    <button key={d} onClick={() => setDifficulty(d)}
+                      style={{ flex: 1, fontFamily: "inherit", fontWeight: 700, padding: 8, cursor: "pointer",
+                        border: "3px solid #171325", borderRadius: 13, boxShadow: "3px 3px 0 #171325",
+                        background: difficulty === d ? DIFF_COLOR[d] : "#FFFCF2" }}>{d}</button>
+                  ))}
+                </div>
+                <input className="input" style={{ marginBottom: 8 }} value={topics} onChange={(e) => setTopics(e.target.value)} placeholder="topics, comma, separated" />
+                <button className="btn" onClick={handleAdd}>Add to bank</button>
+              </div>
+
+              {problems?.map((p) => {
+                const inPlan = plan?.problemIds.includes(p._id);
+                return (
+                  <div key={p._id} className="card" style={{ padding: 12, display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                    <div style={{ flex: 1, minWidth: 180 }}>
+                      <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 17 }}>
+                        {p.url ? <a href={p.url} target="_blank" rel="noreferrer">{p.title}</a> : p.title}
+                      </div>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 5, flexWrap: "wrap" }}>
+                        <span style={{ background: DIFF_COLOR[p.difficulty], border: "2.5px solid #171325", borderRadius: 8, padding: "0 7px", fontSize: 11, fontWeight: 700 }}>{p.difficulty}</span>
+                        <span style={{ fontSize: 11, opacity: 0.6 }}>added by {p.addedByName}</span>
+                        {inPlan && <span style={{ fontSize: 11, fontWeight: 700, background: "#FFF0B8", border: "2px solid #171325", borderRadius: 8, padding: "0 6px" }}>in plan</span>}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      <button className="btn tiny" onClick={() => handleSolve(p._id)}>Solve</button>
+                      {plan && !inPlan && <button className="btn ghost tiny" onClick={() => setPlanProblems({ roomId, problemIds: [...(plan.problemIds || []), p._id] })}>+ plan</button>}
+                      {plan && inPlan && !plan.locked && <button className="btn ghost tiny" onClick={() => setPlanProblems({ roomId, problemIds: plan.problemIds.filter((id) => id !== p._id) })}>− plan</button>}
+                      {members && members.length > 1 && <button className="btn ghost tiny" onClick={() => handleDare(p._id, p.title)}>dare</button>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </main>
       </div>
 
-      {msg && <p>{msg}</p>}
+      {toast && (
+        <div style={{ position: "fixed", left: "50%", bottom: 26, transform: "translateX(-50%)", zIndex: 60,
+          background: "#7BE495", border: "3px solid #171325", borderRadius: 16, boxShadow: "5px 5px 0 #171325",
+          padding: "12px 22px", fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 16, animation: "rise .4s cubic-bezier(.34,1.56,.64,1)" }}>
+          {toast}
+        </div>
+      )}
     </div>
   );
 }
