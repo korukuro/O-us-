@@ -69,3 +69,36 @@ export const list = query({
     );
   },
 });
+
+export const syncStatus = query({
+  args: { roomId: v.id("rooms") },
+  handler: async (ctx, { roomId }) => {
+    await requireMember(ctx, roomId);
+
+    const solves = await ctx.db
+      .query("solves")
+      .withIndex("by_room_user", (q) => q.eq("roomId", roomId))
+      .collect();
+
+    // count distinct solvers per problem
+    const solversByProblem = new Map();
+    for (const s of solves) {
+      if (!solversByProblem.has(s.problemId)) {
+        solversByProblem.set(s.problemId, new Set());
+      }
+      solversByProblem.get(s.problemId).add(s.userId);
+    }
+
+    let syncedCount = 0;
+    for (const solvers of solversByProblem.values()) {
+      if (solvers.size >= 2) syncedCount++;
+    }
+
+    const TARGET = 3;
+    return {
+      syncedCount,
+      target: TARGET,
+      bonusActive: syncedCount >= TARGET,
+    };
+  },
+});

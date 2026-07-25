@@ -80,15 +80,23 @@ function RoomList({ onOpen }) {
 }
 
 function Room({ roomId, onBack }) {
+  const me = useQuery(api.users.current);
+  const myUserId = me?._id;
+
   const problems = useQuery(api.problems.list, { roomId });
   const feed = useQuery(api.feed.list, { roomId });
+  const members = useQuery(api.rooms.members, { roomId });
+  const sync = useQuery(api.problems.syncStatus, { roomId });
+  const plan = useQuery(api.plans.today, { roomId });
+
   const addProblem = useMutation(api.problems.add);
   const logSolve = useMutation(api.solves.log);
   const sendMessage = useMutation(api.solves.sendMessage);
   const toggleReaction = useMutation(api.reactions.toggle);
-  const plan = useQuery(api.plans.today, { roomId });
   const setPlanProblems = useMutation(api.plans.setProblems);
   const lockPlan = useMutation(api.plans.lock);
+  const throwDare = useMutation(api.dares.throwDare);
+  const acceptDare = useMutation(api.dares.accept);
 
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
@@ -117,6 +125,23 @@ function Room({ roomId, onBack }) {
     try {
       const { gained } = await logSolve({ roomId, problemId, takeaway });
       setMsg(`Solved! +${gained} XP`);
+    } catch (e) { setMsg(e.message); }
+  };
+
+  const handleDare = async (problemId, problemTitle) => {
+    const others = (members || []).filter((m) => m.userId !== myUserId);
+    if (others.length === 0) { setMsg("Nobody else in the room to dare"); return; }
+    let target = others[0];
+    if (others.length > 1) {
+      const names = others.map((o, i) => `${i}: ${o.name}`).join("\n");
+      const pick = prompt(`Dare who? Enter a number:\n${names}`);
+      const idx = parseInt(pick, 10);
+      if (isNaN(idx) || !others[idx]) return;
+      target = others[idx];
+    }
+    try {
+      await throwDare({ roomId, targetId: target.userId, problemId });
+      setMsg(`Dared ${target.name} to do ${problemTitle}`);
     } catch (e) { setMsg(e.message); }
   };
 
@@ -149,6 +174,14 @@ function Room({ roomId, onBack }) {
             </div>
           )}
 
+          {sync && (
+            <div style={{ background: "#def", padding: 8, marginBottom: 12 }}>
+              <b>In sync: {sync.syncedCount}/{sync.target}</b>
+              {sync.bonusActive && " — bonus active 🎉"}
+              <div style={{ fontSize: 12 }}>Problems 2+ of you have both solved.</div>
+            </div>
+          )}
+
           <h2>Problem bank</h2>
           {problems === undefined && <p>Loading…</p>}
           <ul>
@@ -170,6 +203,9 @@ function Room({ roomId, onBack }) {
                   })}>− unplan</button>
                 )}
                 {plan?.problemIds.includes(p._id) && <span> [in plan]</span>}
+                {members && members.length > 1 && (
+                  <button onClick={() => handleDare(p._id, p.title)}>dare</button>
+                )}
               </li>
             ))}
           </ul>
@@ -229,6 +265,20 @@ function Room({ roomId, onBack }) {
               if (e.kind === "text") return (
                 <div key={e._id} style={{ padding: 8 }}>
                   <b>{e.authorName}:</b> {e.body}
+                  {reactionBar}
+                </div>
+              );
+              if (e.kind === "dare") return (
+                <div key={e._id} style={{ background: "#fde", padding: 8 }}>
+                  <b>{e.authorName}</b> dared <b>{e.targetName}</b>: {e.problemTitle}
+                  {e.done ? (
+                    <span> — cleared ✓</span>
+                  ) : e.targetId === myUserId ? (
+                    <button onClick={() => acceptDare({ eventId: e._id })}
+                      style={{ marginLeft: 8 }}>Take it on</button>
+                  ) : (
+                    <span> — pending…</span>
+                  )}
                   {reactionBar}
                 </div>
               );
