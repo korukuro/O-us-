@@ -86,6 +86,9 @@ function Room({ roomId, onBack }) {
   const logSolve = useMutation(api.solves.log);
   const sendMessage = useMutation(api.solves.sendMessage);
   const toggleReaction = useMutation(api.reactions.toggle);
+  const plan = useQuery(api.plans.today, { roomId });
+  const setPlanProblems = useMutation(api.plans.setProblems);
+  const lockPlan = useMutation(api.plans.lock);
 
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
@@ -122,8 +125,30 @@ function Room({ roomId, onBack }) {
       <button onClick={onBack}>← rooms</button>
 
       <div style={{ display: "flex", gap: 40, alignItems: "flex-start" }}>
-        {/* LEFT: problem bank */}
+        {/* LEFT: plan + problem bank */}
         <div style={{ flex: 1 }}>
+          <h2>Today's plan</h2>
+          {plan && (
+            <div style={{ background: "#ffd", padding: 10, marginBottom: 12 }}>
+              {plan.locked ? (
+                <>
+                  <b>{plan.done}/{plan.target} done</b> (locked)
+                  <div style={{ fontSize: 12 }}>Add more any time; can't remove.</div>
+                </>
+              ) : (
+                <>
+                  <b>{plan.problemIds.length} picked</b> — not locked
+                  <button
+                    disabled={plan.problemIds.length === 0}
+                    onClick={() => lockPlan({ roomId })}
+                    style={{ marginLeft: 8 }}>
+                    Lock the day
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
           <h2>Problem bank</h2>
           {problems === undefined && <p>Loading…</p>}
           <ul>
@@ -132,6 +157,19 @@ function Room({ roomId, onBack }) {
                 {p.url ? <a href={p.url} target="_blank" rel="noreferrer">{p.title}</a> : p.title}
                 {" — "}{p.difficulty} — added by {p.addedByName}{" "}
                 <button onClick={() => handleSolve(p._id)}>Log solve</button>
+                {plan && !plan.problemIds.includes(p._id) && (
+                  <button onClick={() => setPlanProblems({
+                    roomId,
+                    problemIds: [...(plan.problemIds || []), p._id],
+                  })}>+ plan</button>
+                )}
+                {plan && plan.problemIds.includes(p._id) && !plan.locked && (
+                  <button onClick={() => setPlanProblems({
+                    roomId,
+                    problemIds: plan.problemIds.filter((id) => id !== p._id),
+                  })}>− unplan</button>
+                )}
+                {plan?.problemIds.includes(p._id) && <span> [in plan]</span>}
               </li>
             ))}
           </ul>
@@ -165,13 +203,14 @@ function Room({ roomId, onBack }) {
               const reactionBar = (
                 <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
                   {["🔥", "🧠", "😭", "💀"].map((emoji) => {
-                    const who = e.reactions?.[emoji] || [];
+                    const found = e.reactions?.find((r) => r.emoji === emoji);
+                    const count = found?.count || 0;
                     const mine = e.mineReacted?.includes(emoji);
                     return (
                       <button key={emoji}
                         onClick={() => toggleReaction({ eventId: e._id, emoji })}
                         style={{ fontWeight: mine ? "bold" : "normal" }}>
-                        {emoji}{who.length > 0 ? ` ${who.length}` : ""}
+                        {emoji}{count > 0 ? ` ${count}` : ""}
                       </button>
                     );
                   })}
