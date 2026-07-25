@@ -13,7 +13,6 @@ function configure() {
   );
 }
 
-// shared sender used by both the public action and the cron
 async function deliver(ctx, userId, title, body, url) {
   const subs = await ctx.runQuery(internal.subscriptions.getSubsForUser, { userId });
   const payload = JSON.stringify({ title, body, url: url || "/" });
@@ -30,7 +29,7 @@ async function deliver(ctx, userId, title, body, url) {
   }
 }
 
-// called from the client (dares)
+// public — called from the client (dare throw)
 export const sendToUser = action({
   args: { userId: v.id("users"), title: v.string(), body: v.string(), url: v.optional(v.string()) },
   handler: async (ctx, { userId, title, body, url }) => {
@@ -39,7 +38,16 @@ export const sendToUser = action({
   },
 });
 
-// called only by the cron
+// internal — called by the scheduler (dare accept)
+export const sendToUserInternal = internalAction({
+  args: { userId: v.id("users"), title: v.string(), body: v.string(), url: v.optional(v.string()) },
+  handler: async (ctx, { userId, title, body, url }) => {
+    configure();
+    await deliver(ctx, userId, title, body, url);
+  },
+});
+
+// internal — called by the cron
 export const nudgeIncomplete = internalAction({
   handler: async (ctx) => {
     configure();

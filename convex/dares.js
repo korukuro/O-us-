@@ -2,6 +2,7 @@ import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { requireMember } from "./lib/auth";
 import { dayKeyFor } from "./lib/dates";
+import { internal } from "./_generated/api";
 
 export const throwDare = mutation({
   args: {
@@ -62,10 +63,17 @@ export const accept = mutation({
     if (!event || event.kind !== "dare") throw new Error("Not a dare");
     const { user } = await requireMember(ctx, event.roomId);
 
-    // only the target can accept their own dare
     if (event.targetId !== user._id) {
       throw new Error("This dare isn't for you");
     }
     await ctx.db.patch(eventId, { done: true });
+
+    // notify the person who threw the dare
+    const problem = event.problemId ? await ctx.db.get(event.problemId) : null;
+    await ctx.scheduler.runAfter(0, internal.push.sendToUserInternal, {
+      userId: event.userId, // the thrower
+      title: "Dare cleared ✅",
+      body: `${user.name} finished your dare: ${problem?.title || "a problem"}`,
+    });
   },
 });
