@@ -1,0 +1,11 @@
+{
+  "name": "O(us)",
+  "short_name": "O(us)",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#A8E0CF",
+  "theme_color": "#FFC93C",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
