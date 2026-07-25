@@ -1,13 +1,14 @@
 import {
   SignInButton, UserButton, SignedIn, SignedOut,
 } from "@clerk/clerk-react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useStoreUser } from "./hooks/useStoreUser";
 import { parseProblemUrl } from "./lib/parseProblemUrl";
 import ORing from "./components/ORing";
 import Confetti from "./components/Confetti";
 import { useState, useEffect, useRef } from "react";
+import { usePush } from "./hooks/usePush";
 
 function cleanError(e) {
   const raw = e?.message || String(e);
@@ -135,6 +136,8 @@ function Room({ roomId, onBack }) {
   const members = useQuery(api.rooms.members, { roomId });
   const sync = useQuery(api.problems.syncStatus, { roomId });
   const plan = useQuery(api.plans.today, { roomId });
+  const { status: pushStatus, enable: enablePush } = usePush();
+  const sendPush = useAction(api.push.sendToUser);
 
   const addProblem = useMutation(api.problems.add);
   const logSolve = useMutation(api.solves.log);
@@ -198,6 +201,11 @@ function Room({ roomId, onBack }) {
     }
     try {
       await throwDare({ roomId, targetId: target.userId, problemId });
+      await sendPush({
+        userId: target.userId,
+        title: "You've been dared 🎯",
+        body: `${me?.name || "Someone"} dares you: ${problemTitle}`,
+      });
       flash(`Dared ${target.name}`);
     } catch (e) { flash(cleanError(e)); }
   };
@@ -231,6 +239,13 @@ function Room({ roomId, onBack }) {
         <h1 style={{ fontFamily: "'Baloo 2'", fontSize: 30, margin: 0, flex: 1 }}>
           O<span style={{ opacity: 0.8 }}>(us)</span>
         </h1>
+        <button className="btn ghost tiny" onClick={enablePush} disabled={pushStatus === "on"}>
+          {pushStatus === "on" ? "🔔 on"
+            : pushStatus === "working" ? "…"
+            : pushStatus === "denied" ? "🔕 blocked"
+            : pushStatus === "unsupported" ? "🔕 n/a"
+            : "🔔 notify me"}
+        </button>
         <UserButton />
       </header>
 
