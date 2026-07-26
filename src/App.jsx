@@ -10,6 +10,7 @@ import Confetti from "./components/Confetti";
 import { useState, useEffect, useRef } from "react";
 import { usePush } from "./hooks/usePush";
 import HowItWorks from "./components/HowItWorks";
+import { useTheme } from "./hooks/useTheme";
 
 function cleanError(e) {
   const raw = e?.message || String(e);
@@ -77,6 +78,7 @@ function RoomList({ onOpen }) {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState("");
+  const { theme, toggle } = useTheme();
 
   return (
     <div style={{ maxWidth: 560, margin: "0 auto" }}>
@@ -85,6 +87,9 @@ function RoomList({ onOpen }) {
         <h1 style={{ fontFamily: "'Baloo 2'", fontSize: 34, margin: 0, flex: 1 }}>
           O<span style={{ opacity: 0.8 }}>(us)</span>
         </h1>
+        <button className="btn ghost tiny" onClick={toggle}>
+          {theme === "light" ? "🌙" : "☀️"}
+        </button>
         <UserButton />
       </header>
 
@@ -148,6 +153,7 @@ function Room({ roomId, onBack }) {
   const removeProblem = useMutation(api.problems.remove);
   const [editing, setEditing] = useState(null); // the problem being edited
   const [showHelp, setShowHelp] = useState(false);
+  const { theme, toggle } = useTheme();
 
   const addProblem = useMutation(api.problems.add);
   const logSolve = useMutation(api.solves.log);
@@ -261,8 +267,8 @@ function Room({ roomId, onBack }) {
         return (
           <button key={emoji} onClick={() => toggleReaction({ eventId: e._id, emoji })}
             style={{
-              fontSize: 14, background: mine ? "#FFE58A" : "#FFFCF2",
-              border: "2.5px solid #171325", borderRadius: 10, padding: "1px 7px", cursor: "pointer",
+              fontSize: 14, background: mine ? "#FFE58A" : "var(--surface)",
+              border: "2.5px solid var(--border)", borderRadius: 10, padding: "1px 7px", cursor: "pointer",
             }}>
             {emoji}{count > 0 ? ` ${count}` : ""}
           </button>
@@ -289,6 +295,9 @@ function Room({ roomId, onBack }) {
             : "🔔 notify me"}
         </button>
         <button className="btn ghost tiny" onClick={() => setShowHelp(true)}>?</button>
+        <button className="btn ghost tiny" onClick={toggle}>
+          {theme === "light" ? "🌙" : "☀️"}
+        </button>
         <UserButton />
       </header>
 
@@ -296,7 +305,7 @@ function Room({ roomId, onBack }) {
         {/* RAIL */}
         <aside className="room-rail">
           {myMember && myLevel && (
-            <div className="card" style={{ padding: 14, display: "flex", gap: 12, alignItems: "center", background: "#CFE4FF" }}>
+            <div className="card" style={{ padding: 14, display: "flex", gap: 12, alignItems: "center", background: "var(--bubble-me)" }}>
               <ORing size={80} pct={myLevel.pct} tint={myLevel.tint} awake={(plan?.done || 0) > 0} />
               <div>
                 <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 20 }}>You</div>
@@ -330,7 +339,7 @@ function Room({ roomId, onBack }) {
           </div>
 
           {plan && (
-            <div className="card" style={{ padding: 13, background: "#FFF0B8" }}>
+            <div className="card plan-card" style={{ padding: 13 }}>
               <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 16 }}>Today's plan</div>
               {plan.locked ? (
                 <>
@@ -351,7 +360,7 @@ function Room({ roomId, onBack }) {
           )}
 
           {sync && (
-            <div className="card" style={{ padding: 13, background: "#DDF3FF" }}>
+            <div className="card sync-card" style={{ padding: 13 }}>
               <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 16 }}>In sync</div>
               <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 26 }}>
                 {sync.syncedCount}<span style={{ fontSize: 15, opacity: 0.45 }}>/{sync.target}</span>
@@ -396,7 +405,7 @@ function Room({ roomId, onBack }) {
                 {feed === undefined && <p>Loading…</p>}
                 {feed?.map((e) => {
                   if (e.kind === "solve") return (
-                    <div key={e._id} className="card" style={{ padding: 12, background: "#F2F8FF", animation: "rise .34s cubic-bezier(.34,1.56,.64,1)" }}>
+                    <div key={e._id} className="card" style={{ padding: 12, background: "var(--surface-2)", animation: "rise .34s cubic-bezier(.34,1.56,.64,1)" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                         <b>{e.authorName}</b>
                         <span style={{ background: DIFF_COLOR[e.difficulty], border: "2.5px solid #171325", borderRadius: 9, padding: "1px 9px", fontSize: 12, fontWeight: 700 }}>{e.difficulty}</span>
@@ -417,7 +426,7 @@ function Room({ roomId, onBack }) {
                       <div key={e._id} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start" }}>
                         <div className="card" style={{
                           padding: "9px 13px", maxWidth: "78%",
-                          background: mine ? "#CFE4FF" : "#FFFCF2",
+                          background: mine ? "var(--bubble-me)" : "var(--bubble-them)",
                           borderBottomRightRadius: mine ? 6 : 20,
                           borderBottomLeftRadius: mine ? 20 : 6,
                         }}>
@@ -434,7 +443,7 @@ function Room({ roomId, onBack }) {
                   if (e.kind === "dare") {
                     const forMe = e.targetId === myUserId;
                     return (
-                      <div key={e._id} className="card" style={{ padding: 12, background: "#FFE9F2" }}>
+                      <div key={e._id} className="card dare-card" style={{ padding: 12 }}>
                         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", opacity: 0.6 }}>
                           {e.authorName} → {e.targetName}
                         </div>
@@ -502,9 +511,9 @@ function Room({ roomId, onBack }) {
                         {p.url ? <a href={p.url} target="_blank" rel="noreferrer">{p.title}</a> : p.title}
                       </div>
                       <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 5, flexWrap: "wrap" }}>
-                        <span style={{ background: DIFF_COLOR[p.difficulty], border: "2.5px solid #171325", borderRadius: 8, padding: "0 7px", fontSize: 11, fontWeight: 700 }}>{p.difficulty}</span>
+                        <span style={{ background: DIFF_COLOR[p.difficulty], color: "#171325", border: "2.5px solid var(--border)", borderRadius: 8, padding: "0 7px", fontSize: 11, fontWeight: 700 }}>{p.difficulty}</span>
                         <span style={{ fontSize: 11, opacity: 0.6 }}>added by {p.addedByName}</span>
-                        {inPlan && <span style={{ fontSize: 11, fontWeight: 700, background: "#FFF0B8", border: "2px solid #171325", borderRadius: 8, padding: "0 6px" }}>in plan</span>}
+                        {inPlan && <span style={{ fontSize: 11, fontWeight: 700, color: "#171325", background: "#FFF0B8", border: "2px solid var(--border)", borderRadius: 8, padding: "0 6px" }}>in plan</span>}
                       </div>
                     </div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -531,7 +540,7 @@ function Room({ roomId, onBack }) {
               {solvedProblems.map((p) => {
                 const inPlan = plan?.problemIds.includes(p._id);
                 return (
-                  <div key={p._id} className="card" style={{ padding: 12, background: "#F1FBF4", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                  <div key={p._id} className="card solved-card" style={{ padding: 12, display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
                     <div style={{ flex: 1, minWidth: 180 }}>
                       <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 17 }}>
                         {p.url ? <a href={p.url} target="_blank" rel="noreferrer">{p.title}</a> : p.title}
@@ -559,7 +568,7 @@ function Room({ roomId, onBack }) {
               {dares.map((e) => {
                 const forMe = e.targetId === myUserId;
                 return (
-                  <div key={e._id} className="card" style={{ padding: 12, background: "#FFE9F2" }}>
+                  <div key={e._id} className="card dare-card" style={{ padding: 12 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", opacity: 0.6 }}>
                       {e.authorName} → {e.targetName}
                     </div>

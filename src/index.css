@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Fredoka:wght@500;600;700&display=swap');
 
 :root {
+  /* base palette */
   --ink: #171325;
   --paper: #FFFCF2;
   --mint: #A8E0CF;
@@ -9,6 +10,33 @@
   --rose: #FF9FC4;
   --grape: #B77BFF;
   --grass: #7BE495;
+
+  /* semantic tokens — components use THESE */
+  --bg: #A8E0CF;
+  --bg-dots: rgba(23,19,37,.16);
+  --surface: #FFFCF2;
+  --surface-2: #F2F8FF;
+  --text: #171325;
+  --border: #171325;
+  --shadow: #171325;
+  --bubble-me: #CFE4FF;
+  --bubble-them: #FFFCF2;
+}
+
+[data-theme="dark"] {
+  --ink: #EDE9F5;
+  --paper: #221E33;
+  --mint: #14121F;
+
+  --bg: #14121F;
+  --bg-dots: rgba(255,255,255,.06);
+  --surface: #221E33;
+  --surface-2: #2A2540;
+  --text: #EDE9F5;
+  --border: #4A4363;
+  --shadow: #0C0A14;
+  --bubble-me: #2E3A5C;
+  --bubble-them: #2A2540;
 }
 
 * { box-sizing: border-box; }
@@ -16,44 +44,60 @@
 body {
   margin: 0;
   font-family: 'Fredoka', 'Baloo 2', system-ui, sans-serif;
-  color: var(--ink);
-  background: var(--mint);
-  background-image: radial-gradient(circle at 1px 1px, rgba(23,19,37,.16) 1.6px, transparent 0);
+  color: var(--text);
+  background: var(--bg);
+  background-image: radial-gradient(circle at 1px 1px, var(--bg-dots) 1.6px, transparent 0);
   background-size: 22px 22px;
+  transition: background .3s ease, color .3s ease;
 }
 
 a { color: inherit; }
 
 .card {
-  background: var(--paper);
-  border: 3px solid var(--ink);
+  background: var(--surface);
+  color: var(--text);
+  border: 3px solid var(--border);
   border-radius: 20px;
-  box-shadow: 5px 5px 0 var(--ink);
+  box-shadow: 5px 5px 0 var(--shadow);
 }
 
 .btn {
   font-family: inherit; font-weight: 700; font-size: 15px;
-  background: var(--sun); color: var(--ink);
-  border: 3px solid var(--ink); border-radius: 14px;
-  box-shadow: 4px 4px 0 var(--ink);
+  background: var(--sun); color: #171325;
+  border: 3px solid var(--border); border-radius: 14px;
+  box-shadow: 4px 4px 0 var(--shadow);
   padding: 10px 16px; cursor: pointer;
   transition: transform .08s ease, box-shadow .08s ease;
 }
-.btn:hover:not(:disabled) { transform: translate(1px,1px); box-shadow: 3px 3px 0 var(--ink); }
-.btn:active:not(:disabled) { transform: translate(4px,4px); box-shadow: 0 0 0 var(--ink); }
+.btn:hover:not(:disabled) { transform: translate(1px,1px); box-shadow: 3px 3px 0 var(--shadow); }
+.btn:active:not(:disabled) { transform: translate(4px,4px); box-shadow: 0 0 0 var(--shadow); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
-.btn.ghost { background: var(--paper); }
-.btn.tiny { padding: 5px 11px; font-size: 13px; box-shadow: 3px 3px 0 var(--ink); }
+.btn.ghost { background: var(--surface); color: var(--text); }
+.btn.tiny { padding: 5px 11px; font-size: 13px; box-shadow: 3px 3px 0 var(--shadow); }
 
 .input {
   font-family: inherit; font-size: 15px; padding: 10px 13px;
-  background: var(--paper); border: 3px solid var(--ink);
-  border-radius: 14px; box-shadow: 4px 4px 0 var(--ink); width: 100%;
+  background: var(--surface); color: var(--text); border: 3px solid var(--border);
+  border-radius: 14px; box-shadow: 4px 4px 0 var(--shadow); width: 100%;
 }
+.input::placeholder { color: var(--text); opacity: .45; }
 
 button:focus-visible, input:focus-visible, a:focus-visible {
   outline: 3px solid #4D7CFE; outline-offset: 2px;
 }
+
+/* accent cards — light */
+.plan-card { background: #FFF0B8; }
+.sync-card { background: #DDF3FF; }
+.dare-card { background: #FFE9F2; }
+
+/* accent cards stay bright with dark text, even in dark mode */
+.plan-card, .sync-card, .dare-card, .solved-card { color: #171325; }
+.solved-card { background: #F1FBF4; }
+[data-theme="dark"] .plan-card { background: #FFF0B8; color: #171325; }
+[data-theme="dark"] .sync-card { background: #DDF3FF; color: #171325; }
+[data-theme="dark"] .dare-card { background: #FFE9F2; color: #171325; }
+[data-theme="dark"] .solved-card { background: #F1FBF4; color: #171325; }
 
 /* --- room layout: desktop two-column, mobile stacked --- */
 .room-grid {
@@ -100,22 +144,14 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 /* --- global custom scrollbar --- */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--ink) transparent;
+  scrollbar-color: var(--border) transparent;
 }
-*::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-*::-webkit-scrollbar-track {
-  background: transparent;
-}
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
 *::-webkit-scrollbar-thumb {
-  background: var(--ink);
+  background: var(--border);
   border-radius: 8px;
-  border: 2px solid var(--mint);
-}
-*::-webkit-scrollbar-thumb:hover {
-  background: #2d2640;
+  border: 2px solid var(--bg);
 }
 
 /* --- animations --- */
@@ -127,3 +163,6 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration:.01ms !important; transition-duration:.01ms !important; }
 }
+
+.solved-card { background: #F1FBF4; color: #171325; }
+[data-theme="dark"] .solved-card { background: #F1FBF4; color: #171325; }
