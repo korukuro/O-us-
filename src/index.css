@@ -137,11 +137,12 @@ button:focus-visible, input:focus-visible, a:focus-visible {
   flex-direction: column;
   gap: 12px;
   padding-right: 4px;
+  max-height: 60vh;
+  overflow-y: auto;
 }
 @media (min-width: 761px) {
   .feed-scroll {
     max-height: 70vh;
-    overflow-y: auto;
   }
 }
 
