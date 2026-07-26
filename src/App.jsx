@@ -142,6 +142,7 @@ function Room({ roomId, onBack }) {
   const { status: pushStatus, enable: enablePush } = usePush();
   const sendPush = useAction(api.push.sendToUser);
   const declineDare = useMutation(api.dares.decline);
+  const unread = feed ? Math.max(0, feed.length - seenCount) : 0;
 
   const addProblem = useMutation(api.problems.add);
   const logSolve = useMutation(api.solves.log);
@@ -160,11 +161,15 @@ function Room({ roomId, onBack }) {
   const [draft, setDraft] = useState("");
   const [confetti, setConfetti] = useState(0);
   const [toast, setToast] = useState(null);
+  const [seenCount, setSeenCount] = useState(0);
   const bottom = useRef(null);
   const parsed = parseProblemUrl(url);
 
   const flash = (m) => { setToast(m); setTimeout(() => setToast(null), 3000); };
   useEffect(() => { if (tab === "feed") bottom.current?.scrollIntoView({ behavior: "smooth" }); }, [feed?.length, tab]);
+  useEffect(() => {
+    if (tab === "feed" && feed) setSeenCount(feed.length);
+  }, [tab, feed?.length]);
 
   const board = [...(members || [])].sort((a, b) => b.xp - a.xp);
   const myMember = members?.find((m) => m.userId === myUserId);
@@ -327,7 +332,18 @@ function Room({ roomId, onBack }) {
         {/* MAIN */}
         <main style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", gap: 8 }}>
-            <button className={`btn ${tab === "feed" ? "" : "ghost"} tiny`} onClick={() => setTab("feed")}>Feed</button>
+            <button className={`btn ${tab === "feed" ? "" : "ghost"} tiny`} onClick={() => setTab("feed")}>
+              Feed
+              {tab !== "feed" && unread > 0 && (
+                <span style={{
+                  marginLeft: 6, background: "#FF6B9D", color: "#171325",
+                  border: "2px solid #171325", borderRadius: 10,
+                  fontSize: 11, fontWeight: 800, padding: "0 6px",
+                }}>
+                  {unread}
+                </span>
+              )}
+            </button>
             <button className={`btn ${tab === "bank" ? "" : "ghost"} tiny`} onClick={() => setTab("bank")}>
               Problems {problems ? `(${problems.length})` : ""}
             </button>
