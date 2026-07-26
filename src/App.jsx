@@ -259,7 +259,7 @@ function Room({ roomId, onBack }) {
                 <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 20 }}>You</div>
                 <div style={{ fontSize: 13, opacity: 0.75 }}>{myLevel.big}</div>
                 <div style={{ fontSize: 11, opacity: 0.6, marginTop: 3 }}>
-                  {myMember.xp} XP · 🔥 {myMember.streak}d
+                  {myMember.xp} XP · 🔥 {myMember.streak}d · ✅ {myMember.solved} solved
                 </div>
               </div>
             </div>
@@ -349,13 +349,23 @@ function Room({ roomId, onBack }) {
                       {reactionBar(e)}
                     </div>
                   );
-                  if (e.kind === "text") return (
-                    <div key={e._id} className="card" style={{ padding: "10px 13px" }}>
-                      <div style={{ fontSize: 12, opacity: 0.6 }}>{e.authorName}</div>
-                      <div style={{ fontSize: 14 }}>{e.body}</div>
-                      {reactionBar(e)}
-                    </div>
-                  );
+                  if (e.kind === "text") {
+                    const mine = e.userId === myUserId;
+                    return (
+                      <div key={e._id} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start" }}>
+                        <div className="card" style={{
+                          padding: "9px 13px", maxWidth: "78%",
+                          background: mine ? "#CFE4FF" : "#FFFCF2",
+                          borderBottomRightRadius: mine ? 6 : 20,
+                          borderBottomLeftRadius: mine ? 20 : 6,
+                        }}>
+                          {!mine && <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.6, marginBottom: 2 }}>{e.authorName}</div>}
+                          <div style={{ fontSize: 14 }}>{e.body}</div>
+                          {reactionBar(e)}
+                        </div>
+                      </div>
+                    );
+                  }
                   if (e.kind === "dare") return (
                     <div key={e._id} className="card" style={{ padding: 12, background: "#FFE9F2" }}>
                       <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", opacity: 0.6 }}>
@@ -419,7 +429,7 @@ function Room({ roomId, onBack }) {
                       </div>
                     </div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      <button className="btn tiny" onClick={() => handleSolve(p._id)}>Solve</button>
+                      <button className="btn tiny" onClick={() => handleSolve(p._id)}>Nuked</button>
                       {plan && !inPlan && <button className="btn ghost tiny" onClick={() => setPlanProblems({ roomId, problemIds: [...(plan.problemIds || []), p._id] })}>+ plan</button>}
                       {plan && inPlan && !plan.locked && <button className="btn ghost tiny" onClick={() => setPlanProblems({ roomId, problemIds: plan.problemIds.filter((id) => id !== p._id) })}>− plan</button>}
                       {members && members.length > 1 && <button className="btn ghost tiny" onClick={() => handleDare(p._id, p.title)}>dare</button>}

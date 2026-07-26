@@ -109,7 +109,7 @@ export const myRooms = query({
 export const members = query({
   args: { roomId: v.id("rooms") },
   handler: async (ctx, { roomId }) => {
-    await requireMember(ctx, roomId); // gate: only members can see the roster
+    await requireMember(ctx, roomId);
     const memberships = await ctx.db
       .query("memberships")
       .withIndex("by_room", (q) => q.eq("roomId", roomId))
@@ -120,6 +120,13 @@ export const members = query({
         .filter((m) => !m.leftAt)
         .map(async (m) => {
           const u = await ctx.db.get(m.userId);
+          // count this member's solves in this room
+          const solves = await ctx.db
+            .query("solves")
+            .withIndex("by_room_user", (q) =>
+              q.eq("roomId", roomId).eq("userId", m.userId)
+            )
+            .collect();
           return {
             userId: m.userId,
             name: u?.name ?? "Unknown",
@@ -127,6 +134,7 @@ export const members = query({
             xp: m.xp,
             streak: m.streak,
             role: m.role,
+            solved: solves.length,
           };
         })
     );
