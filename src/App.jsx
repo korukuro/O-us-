@@ -9,6 +9,7 @@ import ORing from "./components/ORing";
 import Confetti from "./components/Confetti";
 import { useState, useEffect, useRef } from "react";
 import { usePush } from "./hooks/usePush";
+import HowItWorks from "./components/HowItWorks";
 
 function cleanError(e) {
   const raw = e?.message || String(e);
@@ -146,6 +147,7 @@ function Room({ roomId, onBack }) {
   const updateProblem = useMutation(api.problems.update);
   const removeProblem = useMutation(api.problems.remove);
   const [editing, setEditing] = useState(null); // the problem being edited
+  const [showHelp, setShowHelp] = useState(false);
 
   const addProblem = useMutation(api.problems.add);
   const logSolve = useMutation(api.solves.log);
@@ -286,6 +288,7 @@ function Room({ roomId, onBack }) {
             : pushStatus === "unsupported" ? "🔕 n/a"
             : "🔔 notify me"}
         </button>
+        <button className="btn ghost tiny" onClick={() => setShowHelp(true)}>?</button>
         <UserButton />
       </header>
 
@@ -606,6 +609,7 @@ function Room({ roomId, onBack }) {
           </div>
         </div>
       )}
+      {showHelp && <HowItWorks onClose={() => setShowHelp(false)} />}
       {toast && (
         <div style={{ position: "fixed", left: "50%", bottom: 26, transform: "translateX(-50%)", zIndex: 60,
           background: "#7BE495", border: "3px solid #171325", borderRadius: 16, boxShadow: "5px 5px 0 #171325",

@@ -97,6 +97,27 @@ button:focus-visible, input:focus-visible, a:focus-visible {
   }
 }
 
+/* --- global custom scrollbar --- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--ink);
+  border-radius: 8px;
+  border: 2px solid var(--mint);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #2d2640;
+}
+
 /* --- animations --- */
 @keyframes rise { from { opacity:0; transform: translateY(14px) scale(.96); } to { opacity:1; transform:none; } }
 @keyframes pop { 0%{transform:scale(.3)} 70%{transform:scale(1.25)} 100%{transform:scale(1)} }
@@ -106,13 +127,3 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration:.01ms !important; transition-duration:.01ms !important; }
 }
-
-/* custom scrollbar for the feed */
-.feed-scroll::-webkit-scrollbar { width: 10px; }
-.feed-scroll::-webkit-scrollbar-track { background: transparent; }
-.feed-scroll::-webkit-scrollbar-thumb {
-  background: var(--ink);
-  border-radius: 8px;
-  border: 2px solid var(--mint);
-}
-.feed-scroll { scrollbar-width: thin; scrollbar-color: var(--ink) transparent; }
