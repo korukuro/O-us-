@@ -145,6 +145,7 @@ function Room({ roomId, onBack }) {
   const updateProblem = useMutation(api.problems.update);
   const removeProblem = useMutation(api.problems.remove);
   const [editing, setEditing] = useState(null); // the problem being edited
+  const solvedIds = useQuery(api.problems.mySolvedIds, { roomId });
 
   const addProblem = useMutation(api.problems.add);
   const logSolve = useMutation(api.solves.log);
@@ -154,6 +155,11 @@ function Room({ roomId, onBack }) {
   const lockPlan = useMutation(api.plans.lock);
   const throwDare = useMutation(api.dares.throwDare);
   const acceptDare = useMutation(api.dares.accept);
+  const solvedSet = new Set(solvedIds || []);
+  const unsolvedProblems = (problems || []).filter((p) => !solvedSet.has(p._id));
+  const solvedProblems = (problems || []).filter((p) => solvedSet.has(p._id));
+  const dares = (feed || []).filter((e) => e.kind === "dare");
+  const pendingDares = dares.filter((e) => !e.done && e.dareStatus !== "declined");
 
   const [tab, setTab] = useState("feed");
   const [url, setUrl] = useState("");
@@ -356,25 +362,32 @@ function Room({ roomId, onBack }) {
 
         {/* MAIN */}
         <main style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button className={`btn ${tab === "feed" ? "" : "ghost"} tiny`} onClick={() => setTab("feed")}>
               Feed
               {tab !== "feed" && unread > 0 && (
-                <span style={{
-                  marginLeft: 6, background: "#FF6B9D", color: "#171325",
-                  border: "2px solid #171325", borderRadius: 10,
-                  fontSize: 11, fontWeight: 800, padding: "0 6px",
-                }}>
+                <span style={{ marginLeft: 6, background: "#FF6B9D", color: "#171325", border: "2px solid #171325", borderRadius: 10, fontSize: 11, fontWeight: 800, padding: "0 6px" }}>
                   {unread}
                 </span>
               )}
             </button>
             <button className={`btn ${tab === "bank" ? "" : "ghost"} tiny`} onClick={() => setTab("bank")}>
-              Problems {problems ? `(${problems.length})` : ""}
+              Problems ({unsolvedProblems.length})
+            </button>
+            <button className={`btn ${tab === "solved" ? "" : "ghost"} tiny`} onClick={() => setTab("solved")}>
+              Solved ({solvedProblems.length})
+            </button>
+            <button className={`btn ${tab === "dares" ? "" : "ghost"} tiny`} onClick={() => setTab("dares")}>
+              Dares
+              {pendingDares.some((d) => d.targetId === myUserId) && (
+                <span style={{ marginLeft: 6, background: "#FF6B9D", color: "#171325", border: "2px solid #171325", borderRadius: 10, fontSize: 11, fontWeight: 800, padding: "0 6px" }}>
+                  {pendingDares.filter((d) => d.targetId === myUserId).length}
+                </span>
+              )}
             </button>
           </div>
 
-          {tab === "feed" ? (
+          {tab === "feed" && (
             <>
               <div className="feed-scroll">
                 {feed === undefined && <p>Loading…</p>}
@@ -454,7 +467,9 @@ function Room({ roomId, onBack }) {
                 <button className="btn" onClick={() => { if (draft.trim()) { sendMessage({ roomId, body: draft }); setDraft(""); } }}>Send</button>
               </div>
             </>
-          ) : (
+          )}
+
+          {tab === "bank" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div className="card" style={{ padding: 14 }}>
                 <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 18, marginBottom: 8 }}>Add a problem</div>
@@ -475,7 +490,7 @@ function Room({ roomId, onBack }) {
                 <button className="btn" onClick={handleAdd}>Add to bank</button>
               </div>
 
-              {problems?.map((p) => {
+              {unsolvedProblems.map((p) => {
                 const inPlan = plan?.problemIds.includes(p._id);
                 return (
                   <div key={p._id} className="card" style={{ padding: 12, display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
@@ -501,6 +516,52 @@ function Room({ roomId, onBack }) {
                         </>
                       )}
                     </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {tab === "solved" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {solvedProblems.length === 0 && <p style={{ opacity: 0.6 }}>Nothing solved yet. Go nuke a problem.</p>}
+              {solvedProblems.map((p) => (
+                <div key={p._id} className="card" style={{ padding: 12, background: "#F1FBF4" }}>
+                  <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 17 }}>
+                    {p.url ? <a href={p.url} target="_blank" rel="noreferrer">{p.title}</a> : p.title}
+                  </div>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 5, flexWrap: "wrap" }}>
+                    <span style={{ background: DIFF_COLOR[p.difficulty], border: "2.5px solid #171325", borderRadius: 8, padding: "0 7px", fontSize: 11, fontWeight: 700 }}>{p.difficulty}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#2E9E63" }}>✓ solved</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {tab === "dares" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {dares.length === 0 && <p style={{ opacity: 0.6 }}>No dares yet. Throw one from the Problems tab.</p>}
+              {dares.map((e) => {
+                const forMe = e.targetId === myUserId;
+                return (
+                  <div key={e._id} className="card" style={{ padding: 12, background: "#FFE9F2" }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", opacity: 0.6 }}>
+                      {e.authorName} → {e.targetName}
+                    </div>
+                    <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 18, marginTop: 2 }}>{e.problemTitle}</div>
+                    {e.dareStatus === "declined" ? (
+                      <div style={{ color: "#B0741F", fontWeight: 700, marginTop: 6 }}>declined 🙅</div>
+                    ) : e.done ? (
+                      <div style={{ color: "#2E9E63", fontWeight: 700, marginTop: 6 }}>cleared ✓</div>
+                    ) : forMe ? (
+                      <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                        <button className="btn tiny" onClick={() => acceptDare({ eventId: e._id })}>Take it on</button>
+                        <button className="btn ghost tiny" onClick={() => declineDare({ eventId: e._id })}>Decline</button>
+                      </div>
+                    ) : (
+                      <div style={{ opacity: 0.6, fontWeight: 700, marginTop: 6 }}>pending…</div>
+                    )}
                   </div>
                 );
               })}

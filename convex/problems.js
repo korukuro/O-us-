@@ -151,3 +151,17 @@ export const remove = mutation({
     await ctx.db.delete(problemId);
   },
 });
+
+export const mySolvedIds = query({
+  args: { roomId: v.id("rooms") },
+  handler: async (ctx, { roomId }) => {
+    const { user } = await requireMember(ctx, roomId);
+    const solves = await ctx.db
+      .query("solves")
+      .withIndex("by_room_user", (q) =>
+        q.eq("roomId", roomId).eq("userId", user._id)
+      )
+      .collect();
+    return solves.map((s) => s.problemId);
+  },
+});
