@@ -142,7 +142,6 @@ function Room({ roomId, onBack }) {
   const { status: pushStatus, enable: enablePush } = usePush();
   const sendPush = useAction(api.push.sendToUser);
   const declineDare = useMutation(api.dares.decline);
-  const unread = feed ? Math.max(0, feed.length - seenCount) : 0;
 
   const addProblem = useMutation(api.problems.add);
   const logSolve = useMutation(api.solves.log);
@@ -170,6 +169,7 @@ function Room({ roomId, onBack }) {
   useEffect(() => {
     if (tab === "feed" && feed) setSeenCount(feed.length);
   }, [tab, feed?.length]);
+  const unread = feed ? Math.max(0, feed.length - seenCount) : 0;
 
   const board = [...(members || [])].sort((a, b) => b.xp - a.xp);
   const myMember = members?.find((m) => m.userId === myUserId);
