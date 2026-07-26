@@ -68,3 +68,19 @@ export const usersWithIncompletePlans = internalQuery({
     return result;
   },
 });
+
+export const removeSubscription = mutation({
+  args: { endpoint: v.string() },
+  handler: async (ctx, { endpoint }) => {
+    const user = await getCurrentUser(ctx);
+    const rows = await ctx.db
+      .query("pushSubs")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+    for (const r of rows) {
+      if (JSON.parse(r.subscription).endpoint === endpoint) {
+        await ctx.db.delete(r._id);
+      }
+    }
+  },
+});

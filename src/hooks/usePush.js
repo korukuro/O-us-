@@ -14,6 +14,7 @@ function urlBase64ToUint8Array(base64String) {
 export function usePush() {
   const save = useMutation(api.subscriptions.saveSubscription);
   const [status, setStatus] = useState("idle");
+  const remove = useMutation(api.subscriptions.removeSubscription);
 
   // on mount: reflect whatever this browser's actual state already is
   useEffect(() => {
@@ -61,6 +62,19 @@ export function usePush() {
       setStatus("idle");
     }
   };
+const disable = async () => {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await remove({ endpoint: sub.endpoint });
+        await sub.unsubscribe();
+      }
+      setStatus("idle");
+    } catch (e) {
+      console.error("push disable failed", e);
+    }
+  };
 
-  return { status, enable };
+  return { status, enable, disable };
 }

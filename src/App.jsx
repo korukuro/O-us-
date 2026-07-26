@@ -146,7 +146,7 @@ function Room({ roomId, onBack }) {
   const sync = useQuery(api.problems.syncStatus, { roomId });
   const plan = useQuery(api.plans.today, { roomId });
   const solvedIds = useQuery(api.problems.mySolvedIds, { roomId });
-  const { status: pushStatus, enable: enablePush } = usePush();
+  const { status: pushStatus, enable: enablePush, disable: disablePush } = usePush();
   const sendPush = useAction(api.push.sendToUser);
   const declineDare = useMutation(api.dares.decline);
   const updateProblem = useMutation(api.problems.update);
@@ -288,12 +288,8 @@ function Room({ roomId, onBack }) {
         <h1 style={{ fontFamily: "'Baloo 2'", fontSize: 30, margin: 0, flex: 1 }}>
           O<span style={{ opacity: 0.8 }}>(us)</span>
         </h1>
-        <button className="btn ghost tiny" onClick={enablePush} disabled={pushStatus === "on"}>
-          {pushStatus === "on" ? "🔔 on"
-            : pushStatus === "working" ? "…"
-            : pushStatus === "denied" ? "🔕 blocked"
-            : pushStatus === "unsupported" ? "🔕 n/a"
-            : "🔔 notify me"}
+        <button className="btn ghost tiny" onClick={() => pushStatus === "on" ? disablePush() : enablePush()}>
+          {pushStatus === "on" ? "🔔 on" : pushStatus === "denied" ? "🔕 blocked" : "🔔 off"}
         </button>
         <button className="btn ghost tiny" onClick={() => setShowHelp(true)}>?</button>
         <button className="btn ghost tiny" onClick={toggle}>
