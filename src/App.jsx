@@ -16,6 +16,9 @@ function cleanError(e) {
   const m = raw.match(/Uncaught Error:\s*(.+?)(?:\s+at handler|$)/);
   return m ? m[1].trim() : raw;
 }
+function formatTime(ms) {
+  return new Date(ms).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
 
 const DIFF_COLOR = { easy: "#7BE495", medium: "#FFC93C", hard: "#FF6B9D" };
 const LEVELS = [
@@ -339,6 +342,7 @@ function Room({ roomId, onBack }) {
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                         <b>{e.authorName}</b>
                         <span style={{ background: DIFF_COLOR[e.difficulty], border: "2.5px solid #171325", borderRadius: 9, padding: "1px 9px", fontSize: 12, fontWeight: 700 }}>{e.difficulty}</span>
+                        <span style={{ fontSize: 10, opacity: 0.45, marginLeft: "auto" }}>{formatTime(e._creationTime)}</span>
                       </div>
                       <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 18, marginTop: 6 }}>
                         {e.problemUrl ? <a href={e.problemUrl} target="_blank" rel="noreferrer">{e.problemTitle}</a> : e.problemTitle}
@@ -361,6 +365,9 @@ function Room({ roomId, onBack }) {
                         }}>
                           {!mine && <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.6, marginBottom: 2 }}>{e.authorName}</div>}
                           <div style={{ fontSize: 14 }}>{e.body}</div>
+                          <div style={{ fontSize: 10, opacity: 0.45, marginTop: 3, textAlign: "right" }}>
+                            {formatTime(e._creationTime)}
+                          </div>
                           {reactionBar(e)}
                         </div>
                       </div>
