@@ -84,6 +84,7 @@ export default defineSchema({
     done: v.optional(v.boolean()),
     dareStatus: v.optional(v.string()), // "pending" | "accepted" | "declined"
     dayKey: v.string(),
+    replyTo: v.optional(v.id("events")),
   }).index("by_room", ["roomId"]),
 
   reactions: defineTable({

@@ -127,8 +127,8 @@ export const log = mutation({
 });
 
 export const sendMessage = mutation({
-  args: { roomId: v.id("rooms"), body: v.string() },
-  handler: async (ctx, { roomId, body }) => {
+  args: { roomId: v.id("rooms"), body: v.string(), replyTo: v.optional(v.id("events")) },
+  handler: async (ctx, { roomId, body, replyTo }) => {
     const { user } = await requireMember(ctx, roomId);
     if (!body.trim()) throw new Error("Empty message");
     await ctx.db.insert("events", {
@@ -136,6 +136,7 @@ export const sendMessage = mutation({
       userId: user._id,
       kind: "text",
       body: body.trim(),
+      replyTo: replyTo || undefined,
       dayKey: dayKeyFor(user.tz),
     });
   },

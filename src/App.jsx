@@ -154,6 +154,7 @@ function Room({ roomId, onBack }) {
   const [editing, setEditing] = useState(null); // the problem being edited
   const [showHelp, setShowHelp] = useState(false);
   const { theme, toggle } = useTheme();
+  const [replyingTo, setReplyingTo] = useState(null); // { id, author, body }
 
   const addProblem = useMutation(api.problems.add);
   const logSolve = useMutation(api.solves.log);
@@ -432,10 +433,24 @@ function Room({ roomId, onBack }) {
                           borderBottomLeftRadius: mine ? 20 : 6,
                         }}>
                           {!mine && <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.6, marginBottom: 2 }}>{e.authorName}</div>}
+                          {e.replyToBody && (
+                            <div style={{
+                              borderLeft: "3px solid var(--border)", paddingLeft: 8, marginBottom: 4,
+                              fontSize: 12, opacity: 0.7,
+                            }}>
+                              <b>{e.replyToAuthor}</b><br />
+                              {e.replyToBody.length > 60 ? e.replyToBody.slice(0, 60) + "…" : e.replyToBody}
+                            </div>
+                          )}
                           <div style={{ fontSize: 14 }}>{e.body}</div>
                           <div style={{ fontSize: 10, opacity: 0.45, marginTop: 3, textAlign: "right" }}>
                             {formatTime(e._creationTime)}
                           </div>
+                          <button
+                            onClick={() => setReplyingTo({ id: e._id, author: mine ? "You" : e.authorName, body: e.body })}
+                            style={{ fontSize: 11, background: "none", border: "none", cursor: "pointer", opacity: 0.6, padding: 0, marginTop: 4, color: "inherit" }}>
+                            ↩ reply
+                          </button>
                           {reactionBar(e)}
                         </div>
                       </div>
@@ -474,11 +489,24 @@ function Room({ roomId, onBack }) {
                 <div ref={bottom} />
               </div>
               </div>
+              {replyingTo && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", background: "var(--surface-2)", borderRadius: 10, marginBottom: 6 }}>
+              <div style={{ flex: 1, fontSize: 12, opacity: 0.75, borderLeft: "3px solid var(--border)", paddingLeft: 8 }}>
+                Replying to <b>{replyingTo.author}</b>: {replyingTo.body.slice(0, 40)}{replyingTo.body.length > 40 ? "…" : ""}
+              </div>
+              <button onClick={() => setReplyingTo(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16 }}>✕</button>
+            </div>
+          )}
               <div style={{ display: "flex", gap: 8 }}>
                 <input className="input" value={draft} onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && draft.trim()) { sendMessage({ roomId, body: draft }); setDraft(""); } }}
+                  onKeyDown={(e) => { if (e.key === "Enter" && draft.trim()) { sendMessage({ roomId, body: draft, replyTo: replyingTo?.id }); setDraft(""); setReplyingTo(null);} }}
                   placeholder="say something…" />
-                <button className="btn" onClick={() => { if (draft.trim()) { sendMessage({ roomId, body: draft }); setDraft(""); } }}>Send</button>
+                <button className="btn" onClick={() => {
+              if (draft.trim()) {
+                sendMessage({ roomId, body: draft, replyTo: replyingTo?.id });
+                setDraft(""); setReplyingTo(null);
+              }
+            }}>Send</button>
               </div>
             </>
           )}

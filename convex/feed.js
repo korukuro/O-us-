@@ -49,6 +49,14 @@ export const list = query({
             .filter((r) => r.userId === user._id)
             .map((r) => r.emoji),
         };
+        if (e.replyTo) {
+          const quoted = await ctx.db.get(e.replyTo);
+          if (quoted) {
+            const qAuthor = await ctx.db.get(quoted.userId);
+            base.replyToBody = quoted.body || (quoted.kind === "solve" ? "a solve" : "a message");
+            base.replyToAuthor = qAuthor?.name ?? "Unknown";
+          }
+        }
 
         if (e.problemId) {
           const p = await ctx.db.get(e.problemId);
