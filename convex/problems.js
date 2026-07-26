@@ -102,3 +102,52 @@ export const syncStatus = query({
     };
   },
 });
+
+export const update = mutation({
+  args: {
+    problemId: v.id("problems"),
+    title: v.string(),
+    difficulty: v.string(),
+    topics: v.array(v.string()),
+  },
+  handler: async (ctx, { problemId, title, difficulty, topics }) => {
+    const problem = await ctx.db.get(problemId);
+    if (!problem) throw new Error("Problem not found");
+    const { user } = await requireMember(ctx, problem.roomId);
+
+    if (problem.addedBy !== user._id) {
+      throw new Error("Only the person who added it can edit it");
+    }
+    if (!["easy", "medium", "hard"].includes(difficulty)) {
+      throw new Error("Invalid difficulty");
+    }
+
+    await ctx.db.patch(problemId, {
+      title: title.trim(),
+      difficulty,
+      topics: topics.slice(0, 3),
+    });
+  },
+});
+
+export const remove = mutation({
+  args: { problemId: v.id("problems") },
+  handler: async (ctx, { problemId }) => {
+    const problem = await ctx.db.get(problemId);
+    if (!problem) throw new Error("Problem not found");
+    const { user } = await requireMember(ctx, problem.roomId);
+
+    if (problem.addedBy !== user._id) {
+      throw new Error("Only the person who added it can remove it");
+    }
+
+    // clean up: delete solves and plan references for this problem
+    const solves = await ctx.db
+      .query("solves")
+      .withIndex("by_problem", (q) => q.eq("problemId", problemId))
+      .collect();
+    for (const s of solves) await ctx.db.delete(s._id);
+
+    await ctx.db.delete(problemId);
+  },
+});

@@ -142,6 +142,9 @@ function Room({ roomId, onBack }) {
   const { status: pushStatus, enable: enablePush } = usePush();
   const sendPush = useAction(api.push.sendToUser);
   const declineDare = useMutation(api.dares.decline);
+  const updateProblem = useMutation(api.problems.update);
+  const removeProblem = useMutation(api.problems.remove);
+  const [editing, setEditing] = useState(null); // the problem being edited
 
   const addProblem = useMutation(api.problems.add);
   const logSolve = useMutation(api.solves.log);
@@ -216,6 +219,28 @@ function Room({ roomId, onBack }) {
         body: `${me?.name || "Someone"} dares you: ${problemTitle}`,
       });
       flash(`Dared ${target.name}`);
+    } catch (e) { flash(cleanError(e)); }
+  };
+
+  const handleRemove = async (problemId, problemTitle) => {
+    if (!confirm(`Remove "${problemTitle}" from the bank?`)) return;
+    try {
+      await removeProblem({ problemId });
+      flash("Removed");
+    } catch (e) { flash(cleanError(e)); }
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    try {
+      await updateProblem({
+        problemId: editing._id,
+        title: editing.title.trim(),
+        difficulty: editing.difficulty,
+        topics: (editing.topicsStr || "").split(",").map((t) => t.trim()).filter(Boolean),
+      });
+      setEditing(null);
+      flash("Updated ✓");
     } catch (e) { flash(cleanError(e)); }
   };
 
@@ -469,6 +494,12 @@ function Room({ roomId, onBack }) {
                       {plan && !inPlan && <button className="btn ghost tiny" onClick={() => setPlanProblems({ roomId, problemIds: [...(plan.problemIds || []), p._id] })}>+ plan</button>}
                       {plan && inPlan && !plan.locked && <button className="btn ghost tiny" onClick={() => setPlanProblems({ roomId, problemIds: plan.problemIds.filter((id) => id !== p._id) })}>− plan</button>}
                       {members && members.length > 1 && <button className="btn ghost tiny" onClick={() => handleDare(p._id, p.title)}>dare</button>}
+                      {p.addedBy === myUserId && (
+                        <>
+                          <button className="btn ghost tiny" onClick={() => setEditing({ ...p, topicsStr: (p.topics || []).join(", ") })}>edit</button>
+                          <button className="btn ghost tiny" onClick={() => handleRemove(p._id, p.title)}>✕</button>
+                        </>
+                      )}
                     </div>
                   </div>
                 );
@@ -477,7 +508,32 @@ function Room({ roomId, onBack }) {
           )}
         </main>
       </div>
-
+          {editing && (
+        <div onClick={() => setEditing(null)} style={{
+          position: "fixed", inset: 0, background: "rgba(23,19,37,.4)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 18, zIndex: 50,
+        }}>
+          <div className="card" onClick={(ev) => ev.stopPropagation()} style={{ padding: 18, width: "100%", maxWidth: 400 }}>
+            <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 22, marginBottom: 10 }}>Edit problem</div>
+            <input className="input" style={{ marginBottom: 8 }} value={editing.title}
+              onChange={(ev) => setEditing({ ...editing, title: ev.target.value })} placeholder="Title" />
+            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+              {["easy", "medium", "hard"].map((d) => (
+                <button key={d} onClick={() => setEditing({ ...editing, difficulty: d })}
+                  style={{ flex: 1, fontFamily: "inherit", fontWeight: 700, padding: 8, cursor: "pointer",
+                    border: "3px solid #171325", borderRadius: 13, boxShadow: "3px 3px 0 #171325",
+                    background: editing.difficulty === d ? DIFF_COLOR[d] : "#FFFCF2" }}>{d}</button>
+              ))}
+            </div>
+            <input className="input" style={{ marginBottom: 12 }} value={editing.topicsStr || ""}
+              onChange={(ev) => setEditing({ ...editing, topicsStr: ev.target.value })} placeholder="topics, comma, separated" />
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button className="btn ghost tiny" onClick={() => setEditing(null)}>Cancel</button>
+              <button className="btn tiny" onClick={saveEdit}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
       {toast && (
         <div style={{ position: "fixed", left: "50%", bottom: 26, transform: "translateX(-50%)", zIndex: 60,
           background: "#7BE495", border: "3px solid #171325", borderRadius: 16, boxShadow: "5px 5px 0 #171325",
