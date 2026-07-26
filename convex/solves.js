@@ -19,41 +19,52 @@ export const log = mutation({
       throw new Error("Problem not in this room");
     }
 
-    // Prevent double-logging the same problem
-    const already = await ctx.db
+    // Is this a first solve or a revisit?
+    const priorSolves = await ctx.db
       .query("solves")
       .withIndex("by_room_user", (q) =>
         q.eq("roomId", roomId).eq("userId", user._id)
       )
       .collect();
-    if (already.some((s) => s.problemId === problemId)) {
-      throw new Error("You already solved this one");
-    }
+    const existing = priorSolves.find((s) => s.problemId === problemId);
+    const isRevisit = !!existing;
 
     const dayKey = dayKeyFor(user.tz);
+    let gained = 0;
 
-    // 1. the solve row
-    await ctx.db.insert("solves", {
-      roomId,
-      problemId,
-      userId: user._id,
-      takeaway: takeaway?.trim() || undefined,
-      dayKey,
-    });
-
-    // 2. award XP onto the membership (per-room, not per-user)
-    const gained = XP[problem.difficulty] ?? 0;
-    await ctx.db.patch(membership._id, { xp: membership.xp + gained });
-
-    // 3. drop a solve event into the feed
-    await ctx.db.insert("events", {
-      roomId,
-      userId: user._id,
-      kind: "solve",
-      problemId,
-      difficulty: problem.difficulty,
-      dayKey,
-    });
+    if (isRevisit) {
+      // update the existing solve's takeaway; no new row, no XP
+      if (takeaway?.trim()) {
+        await ctx.db.patch(existing._id, { takeaway: takeaway.trim() });
+      }
+      // a lighter "revisited" event, doesn't count as a fresh solve
+      await ctx.db.insert("events", {
+        roomId,
+        userId: user._id,
+        kind: "system",
+        body: `${user.name} revisited ${problem.title}.`,
+        dayKey,
+      });
+    } else {
+      // first solve: the real row, XP, and a solve event
+      await ctx.db.insert("solves", {
+        roomId,
+        problemId,
+        userId: user._id,
+        takeaway: takeaway?.trim() || undefined,
+        dayKey,
+      });
+      gained = XP[problem.difficulty] ?? 0;
+      await ctx.db.patch(membership._id, { xp: membership.xp + gained });
+      await ctx.db.insert("events", {
+        roomId,
+        userId: user._id,
+        kind: "solve",
+        problemId,
+        difficulty: problem.difficulty,
+        dayKey,
+      });
+    }
 
     // 4. streak evaluation: did this solve just complete a locked plan?
     const todaysPlans = await ctx.db

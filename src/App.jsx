@@ -139,13 +139,13 @@ function Room({ roomId, onBack }) {
   const members = useQuery(api.rooms.members, { roomId });
   const sync = useQuery(api.problems.syncStatus, { roomId });
   const plan = useQuery(api.plans.today, { roomId });
+  const solvedIds = useQuery(api.problems.mySolvedIds, { roomId });
   const { status: pushStatus, enable: enablePush } = usePush();
   const sendPush = useAction(api.push.sendToUser);
   const declineDare = useMutation(api.dares.decline);
   const updateProblem = useMutation(api.problems.update);
   const removeProblem = useMutation(api.problems.remove);
   const [editing, setEditing] = useState(null); // the problem being edited
-  const solvedIds = useQuery(api.problems.mySolvedIds, { roomId });
 
   const addProblem = useMutation(api.problems.add);
   const logSolve = useMutation(api.solves.log);
@@ -183,6 +183,11 @@ function Room({ roomId, onBack }) {
   const board = [...(members || [])].sort((a, b) => b.xp - a.xp);
   const myMember = members?.find((m) => m.userId === myUserId);
   const myLevel = myMember ? levelFor(myMember.xp) : null;
+  const solvedSet = new Set(solvedIds || []);
+  const unsolvedProblems = (problems || []).filter((p) => !solvedSet.has(p._id));
+  const solvedProblems = (problems || []).filter((p) => solvedSet.has(p._id));
+  const dares = (feed || []).filter((e) => e.kind === "dare");
+  const pendingDares = dares.filter((e) => !e.done && e.dareStatus !== "declined");
 
   const handleAdd = async () => {
     const finalTitle = title.trim() || parsed?.title;
@@ -202,7 +207,7 @@ function Room({ roomId, onBack }) {
     try {
       const { gained } = await logSolve({ roomId, problemId, takeaway });
       setConfetti((c) => c + 1);
-      flash(`Solved! +${gained} XP`);
+      flash(gained > 0 ? `Solved! +${gained} XP` : "Revisited ✓");
     } catch (e) { flash(cleanError(e)); }
   };
 
@@ -525,17 +530,28 @@ function Room({ roomId, onBack }) {
           {tab === "solved" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {solvedProblems.length === 0 && <p style={{ opacity: 0.6 }}>Nothing solved yet. Go nuke a problem.</p>}
-              {solvedProblems.map((p) => (
-                <div key={p._id} className="card" style={{ padding: 12, background: "#F1FBF4" }}>
-                  <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 17 }}>
-                    {p.url ? <a href={p.url} target="_blank" rel="noreferrer">{p.title}</a> : p.title}
+              {solvedProblems.map((p) => {
+                const inPlan = plan?.problemIds.includes(p._id);
+                return (
+                  <div key={p._id} className="card" style={{ padding: 12, background: "#F1FBF4", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                    <div style={{ flex: 1, minWidth: 180 }}>
+                      <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 17 }}>
+                        {p.url ? <a href={p.url} target="_blank" rel="noreferrer">{p.title}</a> : p.title}
+                      </div>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 5, flexWrap: "wrap" }}>
+                        <span style={{ background: DIFF_COLOR[p.difficulty], border: "2.5px solid #171325", borderRadius: 8, padding: "0 7px", fontSize: 11, fontWeight: 700 }}>{p.difficulty}</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "#2E9E63" }}>✓ solved</span>
+                        {inPlan && <span style={{ fontSize: 11, fontWeight: 700, background: "#FFF0B8", border: "2px solid #171325", borderRadius: 8, padding: "0 6px" }}>in plan</span>}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      <button className="btn ghost tiny" onClick={() => handleSolve(p._id)}>revisit</button>
+                      {plan && !inPlan && <button className="btn ghost tiny" onClick={() => setPlanProblems({ roomId, problemIds: [...(plan.problemIds || []), p._id] })}>+ plan</button>}
+                      {members && members.length > 1 && <button className="btn ghost tiny" onClick={() => handleDare(p._id, p.title)}>dare</button>}
+                    </div>
                   </div>
-                  <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 5, flexWrap: "wrap" }}>
-                    <span style={{ background: DIFF_COLOR[p.difficulty], border: "2.5px solid #171325", borderRadius: 8, padding: "0 7px", fontSize: 11, fontWeight: 700 }}>{p.difficulty}</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "#2E9E63" }}>✓ solved</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
