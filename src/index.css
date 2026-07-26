@@ -21,6 +21,8 @@
   --shadow: #171325;
   --bubble-me: #CFE4FF;
   --bubble-them: #FFFCF2;
+
+  --chat-bg: #EFF6F0;
 }
 
 [data-theme="dark"] {
@@ -37,6 +39,8 @@
   --shadow: #0C0A14;
   --bubble-me: #2E3A5C;
   --bubble-them: #2A2540;
+
+  --chat-bg: #1B1828;
 }
 
 * { box-sizing: border-box; }
@@ -166,3 +170,13 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 
 .solved-card { background: #F1FBF4; color: #171325; }
 [data-theme="dark"] .solved-card { background: #F1FBF4; color: #171325; }
+
+.chat-panel {
+  background: var(--chat-bg);
+  background-image: radial-gradient(circle at 1px 1px, rgba(23,19,37,.04) 1px, transparent 0);
+  background-size: 16px 16px;
+  border: 3px solid var(--border);
+  border-radius: 18px;
+  padding: 12px;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,.06);
+}

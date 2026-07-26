@@ -401,7 +401,8 @@ function Room({ roomId, onBack }) {
 
           {tab === "feed" && (
             <>
-              <div className="feed-scroll">
+              <div className="chat-panel">
+                <div className="feed-scroll">
                 {feed === undefined && <p>Loading…</p>}
                 {feed?.map((e) => {
                   if (e.kind === "solve") return (
@@ -471,6 +472,7 @@ function Room({ roomId, onBack }) {
                   return null;
                 })}
                 <div ref={bottom} />
+              </div>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <input className="input" value={draft} onChange={(e) => setDraft(e.target.value)}
