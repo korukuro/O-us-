@@ -141,6 +141,7 @@ function Room({ roomId, onBack }) {
   const plan = useQuery(api.plans.today, { roomId });
   const { status: pushStatus, enable: enablePush } = usePush();
   const sendPush = useAction(api.push.sendToUser);
+  const declineDare = useMutation(api.dares.decline);
 
   const addProblem = useMutation(api.problems.add);
   const logSolve = useMutation(api.solves.log);
@@ -373,17 +374,29 @@ function Room({ roomId, onBack }) {
                       </div>
                     );
                   }
-                  if (e.kind === "dare") return (
-                    <div key={e._id} className="card" style={{ padding: 12, background: "#FFE9F2" }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", opacity: 0.6 }}>
-                        {e.authorName} → {e.targetName}
+                  if (e.kind === "dare") {
+                    const forMe = e.targetId === myUserId;
+                    return (
+                      <div key={e._id} className="card" style={{ padding: 12, background: "#FFE9F2" }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", opacity: 0.6 }}>
+                          {e.authorName} → {e.targetName}
+                        </div>
+                        <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 18, marginTop: 2 }}>{e.problemTitle}</div>
+                        {e.dareStatus === "declined" ? (
+                          <div style={{ color: "#B0741F", fontWeight: 700, marginTop: 6 }}>declined 🙅</div>
+                        ) : e.done ? (
+                          <div style={{ color: "#2E9E63", fontWeight: 700, marginTop: 6 }}>cleared ✓</div>
+                        ) : forMe ? (
+                          <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                            <button className="btn tiny" onClick={() => acceptDare({ eventId: e._id })}>Take it on</button>
+                            <button className="btn ghost tiny" onClick={() => declineDare({ eventId: e._id })}>Decline</button>
+                          </div>
+                        ) : (
+                          <div style={{ opacity: 0.6, fontWeight: 700, marginTop: 6 }}>pending…</div>
+                        )}
                       </div>
-                      <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 18, marginTop: 2 }}>{e.problemTitle}</div>
-                      {e.done ? <div style={{ color: "#2E9E63", fontWeight: 700, marginTop: 6 }}>cleared ✓</div>
-                        : e.targetId === myUserId ? <button className="btn tiny" style={{ marginTop: 8 }} onClick={() => acceptDare({ eventId: e._id })}>Take it on</button>
-                        : <div style={{ opacity: 0.6, fontWeight: 700, marginTop: 6 }}>pending…</div>}
-                    </div>
-                  );
+                    );
+                  }
                   if (e.kind === "system") return (
                     <div key={e._id} style={{ display: "flex", justifyContent: "center" }}>
                       <span style={{ background: "#B77BFF", border: "3px solid #171325", borderRadius: 14, boxShadow: "4px 4px 0 #171325", padding: "7px 16px", fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 14, animation: "stamp .4s cubic-bezier(.34,1.56,.64,1)" }}>{e.body}</span>

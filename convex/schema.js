@@ -81,6 +81,9 @@ export default defineSchema({
     offPlan: v.optional(v.boolean()),
     done: v.optional(v.boolean()),
     dayKey: v.string(),
+    done: v.optional(v.boolean()),
+    dareStatus: v.optional(v.string()), // "pending" | "accepted" | "declined"
+    dayKey: v.string(),
   }).index("by_room", ["roomId"]),
 
   reactions: defineTable({
