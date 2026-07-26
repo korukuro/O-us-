@@ -159,6 +159,9 @@ function Room({ roomId, onBack }) {
   const unsolvedProblems = (problems || []).filter((p) => !solvedSet.has(p._id));
   const solvedProblems = (problems || []).filter((p) => solvedSet.has(p._id));
   const dares = (feed || []).filter((e) => e.kind === "dare");
+  const board = [...(members || [])].sort((a, b) => b.xp - a.xp);
+  const myMember = members?.find((m) => m.userId === myUserId);
+  const myLevel = myMember ? levelFor(myMember.xp) : null;
   const pendingDares = dares.filter((e) => !e.done && e.dareStatus !== "declined");
 
   const [tab, setTab] = useState("feed");
@@ -180,14 +183,6 @@ function Room({ roomId, onBack }) {
   }, [tab, feed?.length]);
   const unread = feed ? Math.max(0, feed.length - seenCount) : 0;
 
-  const board = [...(members || [])].sort((a, b) => b.xp - a.xp);
-  const myMember = members?.find((m) => m.userId === myUserId);
-  const myLevel = myMember ? levelFor(myMember.xp) : null;
-  const solvedSet = new Set(solvedIds || []);
-  const unsolvedProblems = (problems || []).filter((p) => !solvedSet.has(p._id));
-  const solvedProblems = (problems || []).filter((p) => solvedSet.has(p._id));
-  const dares = (feed || []).filter((e) => e.kind === "dare");
-  const pendingDares = dares.filter((e) => !e.done && e.dareStatus !== "declined");
 
   const handleAdd = async () => {
     const finalTitle = title.trim() || parsed?.title;
