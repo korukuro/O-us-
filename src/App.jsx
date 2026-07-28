@@ -155,6 +155,7 @@ function Room({ roomId, onBack }) {
   const [showHelp, setShowHelp] = useState(false);
   const { theme, toggle } = useTheme();
   const [replyingTo, setReplyingTo] = useState(null); // { id, author, body }
+  const [addOpen, setAddOpen] = useState(false);
 
   const addProblem = useMutation(api.problems.add);
   const logSolve = useMutation(api.solves.log);
@@ -203,6 +204,7 @@ function Room({ roomId, onBack }) {
         difficulty, topics: topics.split(",").map((t) => t.trim()).filter(Boolean),
       });
       setUrl(""); setTitle(""); setTopics(""); flash("Added ✓");
+      setAddOpen(false);
     } catch (e) { flash(cleanError(e)); }
   };
 
@@ -509,24 +511,9 @@ function Room({ roomId, onBack }) {
 
           {tab === "bank" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div className="card" style={{ padding: 14 }}>
-                <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 18, marginBottom: 8 }}>Add a problem</div>
-                <input className="input" style={{ marginBottom: 6 }} value={url}
-                  onChange={(e) => { setUrl(e.target.value); const q = parseProblemUrl(e.target.value); if (q && !title.trim()) setTitle(q.title); }}
-                  placeholder="Paste LeetCode / GfG link" />
-                {parsed && <small style={{ opacity: 0.7 }}>read as: {parsed.title} on {parsed.platform}</small>}
-                <input className="input" style={{ margin: "6px 0" }} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
-                <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
-                  {["easy", "medium", "hard"].map((d) => (
-                    <button key={d} onClick={() => setDifficulty(d)}
-                      style={{ flex: 1, fontFamily: "inherit", fontWeight: 700, padding: 8, cursor: "pointer",
-                        border: "3px solid #171325", borderRadius: 13, boxShadow: "3px 3px 0 #171325",
-                        background: difficulty === d ? DIFF_COLOR[d] : "#FFFCF2" }}>{d}</button>
-                  ))}
-                </div>
-                <input className="input" style={{ marginBottom: 8 }} value={topics} onChange={(e) => setTopics(e.target.value)} placeholder="topics, comma, separated" />
-                <button className="btn" onClick={handleAdd}>Add to bank</button>
-              </div>
+              <button className="btn" onClick={() => setAddOpen(true)} style={{ alignSelf: "flex-start" }}>
+                + Add a problem
+              </button>
 
               {unsolvedProblems.map((p) => {
                 const inPlan = plan?.problemIds.includes(p._id);
@@ -645,6 +632,34 @@ function Room({ roomId, onBack }) {
         </div>
       )}
       {showHelp && <HowItWorks onClose={() => setShowHelp(false)} />}
+      {addOpen && (
+        <div onClick={() => setAddOpen(false)} style={{
+          position: "fixed", inset: 0, background: "rgba(23,19,37,.4)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 18, zIndex: 50,
+        }}>
+          <div className="card" onClick={(ev) => ev.stopPropagation()} style={{ padding: 18, width: "100%", maxWidth: 420 }}>
+            <div style={{ fontFamily: "'Baloo 2'", fontWeight: 800, fontSize: 22, marginBottom: 10 }}>Add a problem</div>
+            <input className="input" style={{ marginBottom: 6 }} value={url}
+              onChange={(e) => { setUrl(e.target.value); const q = parseProblemUrl(e.target.value); if (q && !title.trim()) setTitle(q.title); }}
+              placeholder="Paste LeetCode / GfG link" />
+            {parsed && <small style={{ opacity: 0.7 }}>read as: {parsed.title} on {parsed.platform}</small>}
+            <input className="input" style={{ margin: "6px 0" }} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
+            <div style={{ display: "flex", gap: 8, marginBottom: 6 }}>
+              {["easy", "medium", "hard"].map((d) => (
+                <button key={d} onClick={() => setDifficulty(d)}
+                  style={{ flex: 1, fontFamily: "inherit", fontWeight: 700, padding: 8, cursor: "pointer", color: "#171325",
+                    border: "3px solid var(--border)", borderRadius: 13, boxShadow: "3px 3px 0 var(--shadow)",
+                    background: difficulty === d ? DIFF_COLOR[d] : "#FFFCF2" }}>{d}</button>
+              ))}
+            </div>
+            <input className="input" style={{ marginBottom: 12 }} value={topics} onChange={(e) => setTopics(e.target.value)} placeholder="topics, comma, separated" />
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button className="btn ghost tiny" onClick={() => setAddOpen(false)}>Cancel</button>
+              <button className="btn tiny" onClick={async () => { await handleAdd(); }}>Add to bank</button>
+            </div>
+          </div>
+        </div>
+      )}
       {toast && (
         <div style={{ position: "fixed", left: "50%", bottom: 26, transform: "translateX(-50%)", zIndex: 60,
           background: "#7BE495", border: "3px solid #171325", borderRadius: 16, boxShadow: "5px 5px 0 #171325",
